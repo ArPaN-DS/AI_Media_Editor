@@ -25,6 +25,7 @@ AUDIO_RATE = 44100
 
 # Canvas presets (aspect ratios, CapCut-style)
 RESOLUTIONS = {
+    "4k": (3840, 2160),      # 16:9 UHD
     "1080p": (1920, 1080),   # 16:9
     "720p": (1280, 720),     # 16:9 small
     "vertical": (1080, 1920),  # 9:16 (Shorts/Reels)
@@ -128,17 +129,17 @@ def extract_audio(video_path, output_path, fmt="mp3", bitrate="192k"):
 #  (no timeline needed; friendly for beginners)
 # ─────────────────────────────────────────────
 
-QUICK_COMPRESS_CRF = {"light": 23, "balanced": 28, "strong": 33}
+QUICK_COMPRESS_CRF = {"light": 23, "balanced": 28, "strong": 33, "high": 33}
 QUICK_SCALE = {  # long-edge caps
     "original": None, "1080p": 1080, "720p": 720, "480p": 480, "360p": 360,
 }
 
 
 def _scale_filter(cap):
-    """Scale so the height is `cap`, keeping aspect and even dimensions."""
+    """Use even dimensions, optionally capping height while keeping aspect."""
     if not cap:
-        return None
-    return f"scale=-2:'min({cap},ih)'"
+        return "scale='max(2,trunc(iw/2)*2)':'max(2,trunc(ih/2)*2)'"
+    return f"scale=-2:'max(2,trunc(min({cap},ih)/2)*2)'"
 
 
 def quick_convert(src, out_path, container="mp4", quality="720p"):
@@ -203,6 +204,29 @@ def quick_mute(src, out_path):
     return out_path
 
 
+def trim_video(src, out_path, start_sec=0.0, end_sec=None):
+    """
+    Sub-second millisecond-accurate video trim.
+    Supports float timestamps like start_sec=2.3, end_sec=5.3.
+    Uses re-encoding with fast preset and CRF 20 for crystal clarity.
+    """
+    start_sec = max(0.0, float(start_sec))
+    cmd = [FFMPEG, "-y", "-ss", f"{start_sec:.3f}"]
+    if end_sec is not None and float(end_sec) > start_sec:
+        duration = float(end_sec) - start_sec
+        cmd += ["-t", f"{duration:.3f}"]
+    cmd += [
+        "-i", src,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
+        "-movflags", "+faststart",
+        out_path
+    ]
+    _run(cmd)
+    return out_path
+
+
 # ─────────────────────────────────────────────
 #  TIMELINE EXPORT
 # ─────────────────────────────────────────────
@@ -260,7 +284,7 @@ def _text_position(pos):
 
 def _clip_duration(clip):
     trimmed = max(0.0, float(clip["out"]) - float(clip["in"]))
-    speed = float(clip.get("speed", 1.0)) or 1.0
+    speed = min(4.0, max(0.25, float(clip.get("speed", 1.0)) or 1.0))
     return trimmed / speed
 
 
@@ -280,6 +304,7 @@ def _build_clip_command(clip, src, out_path, target, is_first, is_last,
 
     has_audio = bool(clip.get("hasAudio", True)) and not clip.get("muted")
     volume = min(2.0, max(0.0, float(clip.get("volume", 1.0))))
+    pan = min(1.0, max(-1.0, float(clip.get("pan", 0.0))))
 
     cmd = [FFMPEG, "-y", "-ss", f"{t_in:.3f}", "-t", f"{t_dur:.3f}", "-i", src]
     if not has_audio:
@@ -293,6 +318,9 @@ def _build_clip_command(clip, src, out_path, target, is_first, is_last,
         a_parts += _atempo_chain(speed)
         if volume != 1.0:
             a_parts.append(f"volume={volume:.3f}")
+        if pan != 0.0:
+            a_parts.append("aformat=channel_layouts=stereo")
+            a_parts.append(f"stereotools=balance_out={pan:.3f}")
         if v_fade_in:
             a_parts.append(f"afade=t=in:st=0:d={fade_d:.3f}")
         if v_fade_out:
@@ -381,10 +409,52 @@ def _build_drawtext(texts, target_h):
         if font:
             parts.insert(0, f"fontfile='{_esc_path(font)}'")
         if t.get("bg", True):
-            parts += ["box=1", "boxcolor=black@0.45",
+            background = str(t.get("backgroundColor", "#000000")).lstrip("#")
+            if len(background) != 6 or any(character not in "0123456789abcdefABCDEF"
+                                            for character in background):
+                background = "000000"
+            parts += ["box=1", f"boxcolor=0x{background}@0.45",
                       f"boxborderw={max(6, size // 4)}"]
         filters.append("drawtext=" + ":".join(parts))
     return ",".join(filters)
+
+
+def _compose_positioned_clips(clips, intermediates, video_flags, target,
+                              audio_only, merged, texts):
+    duration = max(float(clip.get("start", 0)) + _clip_duration(clip)
+                   for clip in clips)
+    duration = max(duration, max((float(text.get("end", 0))
+                                  for text in texts), default=0))
+    if duration <= 0:
+        raise ValueError("Timeline clips must have positive durations.")
+    cmd = [FFMPEG, "-y", "-filter_complex_threads", "1"]
+    for part in intermediates:
+        cmd += ["-i", part]
+    graphs = [f"anullsrc=r={AUDIO_RATE}:cl=stereo,atrim=duration={duration:.6f}[silence]"]
+    audio_labels = ["[silence]"]
+    video_label = "base"
+    if not audio_only:
+        width, height = target
+        graphs.append(f"color=c=black:s={width}x{height}:r={TARGET_FPS}:d={duration:.6f}[base]")
+    for index, clip in enumerate(clips):
+        start = max(0.0, float(clip.get("start", 0)))
+        graphs.append(f"[{index}:a]asetpts=PTS-STARTPTS,adelay={start * 1000:.3f}:all=1[a{index}]")
+        audio_labels.append(f"[a{index}]")
+        if not audio_only and video_flags[index]:
+            graphs.append(f"[{index}:v]setpts=PTS-STARTPTS+{start:.6f}/TB[v{index}]")
+            graphs.append(f"[{video_label}][v{index}]overlay=eof_action=pass:repeatlast=0[vbase{index}]")
+            video_label = f"vbase{index}"
+    graphs.append("".join(audio_labels) +
+                  f"amix=inputs={len(audio_labels)}:duration=longest:normalize=0[aout]")
+    cmd += ["-filter_complex", ";".join(graphs), "-map", "[aout]"]
+    if audio_only:
+        cmd += ["-c:a", "pcm_s16le"]
+    else:
+        cmd += ["-map", f"[{video_label}]", "-c:v", "libx264",
+                "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+                "-c:a", "aac", "-b:a", "192k"]
+    cmd += ["-t", f"{duration:.6f}", merged]
+    _run(cmd)
 
 
 def export_project(spec, resolve_source, work_dir, output_path):
@@ -395,7 +465,7 @@ def export_project(spec, resolve_source, work_dir, output_path):
       "format": "mp4" | "mp3" | "wav",
       "resolution": "original" | "1080p" | "720p" | "vertical" | "square",
       "transition": "none" | "fadeblack",
-      "clips":  [{source, in, out, speed, volume, muted, hasAudio, rotate,
+      "clips":  [{source, in, out, speed, volume, pan, muted, hasAudio, rotate,
                   fadeIn, fadeOut, filters:{...}}, ...],
       "texts":  [{text, start, end, size, color, position, bg}, ...],
       "music":  {source, volume, loop} | None
@@ -430,22 +500,34 @@ def export_project(spec, resolve_source, work_dir, output_path):
     # ── pass 1: render each clip to a normalized intermediate ──
     ext = "wav" if audio_only else "mp4"
     intermediates = []
+    video_flags = []
+    positioned = any("start" in clip for clip in clips)
     for i, clip in enumerate(clips):
         src = resolve_source(clip["source"])
         if not src or not os.path.exists(src):
             raise ValueError(f"Source media missing for clip {i + 1}.")
-        part = os.path.join(work_dir, f"part_{i:03d}.{ext}")
+        info = probe_media(src)
+        has_video = bool(info.get("has_video"))
+        video_flags.append(has_video)
+        clip = dict(clip, hasAudio=bool(info.get("has_audio")) and
+                    clip.get("hasAudio", True))
+        part_audio_only = audio_only or (positioned and not has_video)
+        part_ext = "wav" if part_audio_only else ext
+        part = os.path.join(work_dir, f"part_{i:03d}.{part_ext}")
         cmd = _build_clip_command(
             clip, src, part, target,
             is_first=(i == 0), is_last=(i == len(clips) - 1),
-            transition=transition, audio_only=audio_only,
+            transition=transition, audio_only=part_audio_only,
         )
         _run(cmd)
         intermediates.append(part)
 
     # ── pass 2: concat ──
     merged = os.path.join(work_dir, f"merged.{ext}")
-    if len(intermediates) == 1:
+    if positioned:
+        _compose_positioned_clips(clips, intermediates, video_flags, target,
+                                  audio_only, merged, texts)
+    elif len(intermediates) == 1:
         os.replace(intermediates[0], merged)
     else:
         list_path = os.path.join(work_dir, "concat.txt")
@@ -515,6 +597,100 @@ def export_project(spec, resolve_source, work_dir, output_path):
     return output_path
 
 
+def process_timeline(timeline_data, output_path):
+    """
+    Render a timeline structure or simple clips sequence to output_path.
+    Handles single-clip adjustments (e.g. speed, trimming) or multi-clip timelines.
+    """
+    clips = timeline_data.get("clips", [])
+    if not clips:
+        raise ValueError("No clips in timeline data.")
+
+    # Single clip speed / simple transformation
+    if len(clips) == 1:
+        clip = clips[0]
+        src = clip.get("path") or clip.get("source")
+        if not src or not os.path.exists(src):
+            raise FileNotFoundError(f"Source file not found: {src}")
+
+        speed = float(clip.get("speed", 1.0) or 1.0)
+        speed = min(4.0, max(0.25, speed))
+
+        info = probe_media(src)
+        has_video = info.get("has_video", True)
+        has_audio = info.get("has_audio", False)
+
+        cmd = [FFMPEG, "-y", "-i", src]
+        filter_complex = []
+
+        if has_video:
+            pts_mult = 1.0 / speed
+            filter_complex.append(f"[0:v]setpts={pts_mult:.6f}*PTS,{_scale_filter(None)}[v]")
+
+        if has_audio:
+            atempo_filters = ",".join(_atempo_chain(speed))
+            filter_complex.append(f"[0:a]{atempo_filters}[a]")
+
+        if filter_complex:
+            cmd += ["-filter_complex", ";".join(filter_complex)]
+            if has_video:
+                cmd += ["-map", "[v]"]
+            if has_audio:
+                cmd += ["-map", "[a]"]
+        else:
+            if has_video:
+                cmd += ["-map", "0:v"]
+            if has_audio:
+                cmd += ["-map", "0:a"]
+
+        cmd += ["-c:v", "libx264", "-preset", "fast", "-crf", "22", "-c:a", "aac", "-b:a", "192k", output_path]
+        _run(cmd, timeout=1200)
+        return output_path
+
+    # Multi-clip timeline: adapt to export_project
+    work_dir = os.path.join(os.path.dirname(output_path), f"work_{os.getpid()}")
+    os.makedirs(work_dir, exist_ok=True)
+
+    formatted_clips = []
+    source_map = {}
+    for idx, c in enumerate(clips):
+        src = c.get("path") or c.get("source")
+        key = f"clip_{idx}"
+        source_map[key] = src
+        c_info = probe_media(src) if src and os.path.exists(src) else {}
+        dur = c_info.get("duration", 10.0)
+        formatted_clips.append({
+            "source": key,
+            "in": float(c.get("start", c.get("in", 0.0))),
+            "out": float(c.get("end", c.get("out", dur))),
+            "speed": float(c.get("speed", 1.0)),
+            "volume": float(c.get("volume", 1.0)),
+            "hasAudio": c_info.get("has_audio", True),
+            "muted": False
+        })
+
+    spec = {
+        "format": os.path.splitext(output_path)[1].lstrip(".").lower() or "mp4",
+        "resolution": timeline_data.get("canvas", {}).get("preset", "original"),
+        "transition": timeline_data.get("transition", "none"),
+        "clips": formatted_clips,
+        "texts": timeline_data.get("texts", []),
+        "music": timeline_data.get("music")
+    }
+
+    try:
+        export_project(spec, lambda name: source_map.get(name), work_dir, output_path)
+    finally:
+        import shutil
+        if os.path.exists(work_dir):
+            try:
+                shutil.rmtree(work_dir)
+            except Exception:
+                pass
+
+    return output_path
+
+
 def detect_scenes(video_path, threshold=3.0, mode="adaptive"):
     """
     Detects scene cut boundaries in video using scenedetect (PySceneDetect).
@@ -552,7 +728,7 @@ def detect_scenes(video_path, threshold=3.0, mode="adaptive"):
 
 def burn_subtitles(video_path, output_path, style="yellow_box"):
     """
-    Transcribes audio via Whisper and burns stylized hardcoded subtitles onto the video via FFmpeg.
+    Transcribes audio and burns stylized hardcoded subtitles onto the video via FFmpeg.
     style: 'yellow_box' (CapCut modern yellow text with dark box), 'classic_white', 'neon_cyan'
     """
     import tempfile
@@ -600,7 +776,7 @@ def burn_subtitles(video_path, output_path, style="yellow_box"):
     vf_arg = f"subtitles='{escaped_srt}':force_style='{force_style}'"
 
     cmd = [
-        FFMPEG_BINARY, "-y",
+        FFMPEG, "-y",
         "-i", video_path,
         "-vf", vf_arg,
         "-c:a", "copy",
@@ -619,44 +795,135 @@ def burn_subtitles(video_path, output_path, style="yellow_box"):
             except Exception: pass
 
 
-def enhance_video_quality(video_path, output_path, mode="1080p", denoise=True, sharpen=True):
-    """
-    Applies AI-style spatio-temporal video quality enhancement:
-    - hqdn3d (High Quality 3D Spatio-temporal Denoising for low-light/grain removal)
-    - unsharp (Micro-contrast & texture sharpening)
-    - eq/contrast (Dynamic range contrast enhancement)
-    - scale/upscale (Super-resolution pixel reconstruction)
-    """
-    vf_filters = []
+# Short-edge targets for quality enhancement. The long edge follows the
+# source aspect ratio, so 9:16 and 4:3 footage is never stretched.
+ENHANCE_SHORT_EDGE = {"720p": 720, "1080p": 1080, "1440p": 1440, "4k": 2160, "2160p": 2160}
 
+
+def _even(value):
+    return max(2, int(round(float(value) / 2.0)) * 2)
+
+
+def _enhance_target_size(width, height, mode="1080p", pad=False):
+    """Output (w, h) for ``enhance_video_quality``.
+
+    Scales so the *short* edge matches the mode (1080p → 1080), keeps the
+    display aspect ratio, and rounds to even dimensions for 4:2:0 encoding.
+    ``pad=True`` returns the fixed 16:9 canvas for the mode instead (the
+    picture is fitted inside it and letterboxed/pillarboxed). Unknown modes
+    (e.g. "original") keep the source size.
+    """
+    width, height = float(width), float(height)
+    if width <= 0 or height <= 0:
+        raise ValueError("The video has no readable picture size.")
+    short = ENHANCE_SHORT_EDGE.get(str(mode).lower())
+    if short is None:
+        return _even(width), _even(height)
+    if pad:
+        return _even(short * 16.0 / 9.0), short
+    if width >= height:
+        return _even(width * short / height), short
+    return short, _even(height * short / width)
+
+
+def _probe_display_size(path):
+    """Display (width, height) of the first real video stream.
+
+    Accounts for rotation metadata (phones store portrait video as rotated
+    landscape) and non-square pixels. Raises ValueError if there is no video.
+    """
+    cmd = [
+        FFPROBE, "-v", "error", "-select_streams", "v",
+        "-show_entries",
+        "stream=width,height,sample_aspect_ratio:stream_tags=rotate:"
+        "stream_side_data=rotation:stream_disposition=attached_pic",
+        "-of", "json", path,
+    ]
+    try:
+        data = json.loads(_run(cmd, timeout=60).stdout or "{}")
+    except (RuntimeError, ValueError, subprocess.TimeoutExpired):
+        raise ValueError("This file could not be read as a video.")
+    for st in data.get("streams", []):
+        if (st.get("disposition") or {}).get("attached_pic"):
+            continue
+        w, h = int(st.get("width") or 0), int(st.get("height") or 0)
+        if w <= 0 or h <= 0:
+            continue
+        sar = str(st.get("sample_aspect_ratio") or "1:1")
+        try:
+            num, den = (float(x) for x in sar.split(":"))
+            if num > 0 and den > 0:
+                w = w * num / den
+        except ValueError:
+            pass
+        rotation = 0.0
+        try:
+            rotation = float((st.get("tags") or {}).get("rotate", 0) or 0)
+        except ValueError:
+            pass
+        for side in st.get("side_data_list") or []:
+            if "rotation" in side:
+                try:
+                    rotation = float(side["rotation"])
+                except (TypeError, ValueError):
+                    pass
+        if int(round(abs(rotation))) % 180 == 90:
+            w, h = h, w
+        return w, h
+    raise ValueError("This file has no video track to enhance.")
+
+
+def enhance_video_quality(video_path, output_path, mode="1080p", denoise=True, sharpen=True,
+                          pad=False):
+    """
+    Spatio-temporal video quality enhancement:
+    - hqdn3d   (3D denoise for low-light grain)
+    - unsharp  (micro-contrast / texture sharpening)
+    - eq       (gentle contrast & saturation lift)
+    - scale    (Lanczos resize so the short edge matches ``mode``; aspect ratio
+               is preserved — 9:16 stays vertical, 4:3 stays 4:3)
+    ``pad=True`` explicitly requests a fixed 16:9 canvas with letterbox /
+    pillarbox bars instead. Raises ValueError for input without video and
+    RuntimeError (app-authored message) if encoding fails.
+    """
+    src_w, src_h = _probe_display_size(video_path)
+    out_w, out_h = _enhance_target_size(src_w, src_h, mode, pad=pad)
+
+    vf_filters = []
     if denoise:
         vf_filters.append("hqdn3d=4:3:6:4.5")
-
     if sharpen:
         vf_filters.append("unsharp=5:5:1.2:5:5:0.0")
-
     vf_filters.append("eq=contrast=1.08:brightness=0.01:saturation=1.1")
 
-    if mode == "4k":
-        vf_filters.append("scale=3840:2160:flags=lanczos+accurate_rnd")
-    elif mode == "1080p":
-        vf_filters.append("scale=1920:1080:flags=lanczos+accurate_rnd")
-
-    vf_chain = ",".join(vf_filters) if vf_filters else "null"
+    if pad and str(mode).lower() in ENHANCE_SHORT_EDGE:
+        fit = min(out_w / src_w, out_h / src_h)
+        fit_w, fit_h = min(out_w, _even(src_w * fit)), min(out_h, _even(src_h * fit))
+        vf_filters.append(f"scale={fit_w}:{fit_h}:flags=lanczos+accurate_rnd")
+        vf_filters.append(f"pad={out_w}:{out_h}:({out_w}-iw)/2:({out_h}-ih)/2:color=black")
+    else:
+        vf_filters.append(f"scale={out_w}:{out_h}:flags=lanczos+accurate_rnd")
+    vf_filters.append("setsar=1")
 
     cmd = [
         FFMPEG, "-y",
         "-i", video_path,
-        "-vf", vf_chain,
+        "-map", "0:v:0", "-map", "0:a?",
+        "-vf", ",".join(vf_filters),
         "-c:v", "libx264",
         "-crf", "18",
         "-preset", "medium",
+        "-pix_fmt", "yuv420p",
         "-c:a", "copy",
         output_path
     ]
 
-    _run(cmd, timeout=1200)
-    return {"status": "success", "engine": "ffmpeg_video_enhancer"}
+    try:
+        _run(cmd, timeout=1200)
+    except (RuntimeError, subprocess.TimeoutExpired) as err:
+        raise RuntimeError("The video could not be enhanced. Try a shorter clip or "
+                           "convert it to MP4 first.") from err
+    return {"status": "success", "width": out_w, "height": out_h, "padded": bool(pad)}
 
 
 def interpolate_video_fps(video_path, output_path, target_fps=60):

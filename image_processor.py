@@ -46,15 +46,55 @@ def _lanczos_upscale(src, out_path, scale):
     return {"engine": "lanczos", "scale": scale, "size": img.size}
 
 
-def upscale(src, out_path, scale=2, model_key="fast"):
+def _superres_ram_estimate_gb(in_pixels, scale):
+    """Rough peak RAM for a CPU super-resolution pass (activations + output)."""
+    return 1.0 + (in_pixels * 1.2e-6) + (in_pixels * scale * scale * 12) / (1024 ** 3)
+
+
+def _run_superres(cv2, img, model_key, scale, out_path, min_free_ram_gb=0.0):
+    """Run one learned SR model under the lifecycle manager; raises on failure."""
+    cv_name, model_path = _model_path(model_key, scale)
+    if not model_path:
+        raise FileNotFoundError("Requested enhancement model is not installed.")
+
+    from model_manager import global_model_manager
+
+    def _load_sr():
+        sr = cv2.dnn_superres.DnnSuperResImpl_create()
+        sr.readModel(model_path)
+        sr.setModel(cv_name, scale)
+        return sr, {"engine": cv_name, "scale": scale}
+
+    def _unload_sr(sr_instance):
+        del sr_instance
+
+    model_id = f"image_superres_{cv_name}_x{scale}"
+    with global_model_manager.session(model_id, _load_sr, _unload_sr,
+                                      min_free_ram_gb=min_free_ram_gb) as (sr, meta):
+        result = sr.upsample(img)
+        ext = os.path.splitext(out_path)[1].lower()
+        params = ([cv2.IMWRITE_JPEG_QUALITY, 95]
+                  if ext in (".jpg", ".jpeg") else [])
+        if not cv2.imwrite(out_path, result, params):
+            raise IOError("Could not write the enhanced image.")
+        rh, rw = result.shape[:2]
+        return {"engine": cv_name, "scale": scale, "size": (rw, rh)}
+
+
+def upscale(src, out_path, scale=2, model_key="auto"):
     """
     Increase image resolution by `scale` (2 or 4) using a learned SR model.
+
+    model_key: 'auto' (adaptive — highest fidelity the hardware can sustain),
+               'best' or 'fast' (explicit user choice).
 
     Returns a dict describing what actually ran (engine may differ from the
     request if we had to downgrade for performance or missing models).
     """
     if scale not in (2, 4):
         scale = 2
+    if model_key not in ("auto", "fast", "best"):
+        model_key = "auto"
 
     try:
         import cv2
@@ -71,13 +111,6 @@ def upscale(src, out_path, scale=2, model_key="fast"):
     h, w = img.shape[:2]
     in_pixels = w * h
 
-    # Downgrade EDSR -> FSRCNN when the input is too big for a CPU render.
-    if model_key == "best" and in_pixels > EDSR_MAX_INPUT_PIXELS:
-        model_key = "fast"
-        downgraded = True
-    else:
-        downgraded = False
-
     # Guard against an absurdly large output.
     if in_pixels * scale * scale > MAX_OUTPUT_PIXELS:
         if scale == 4:
@@ -85,44 +118,61 @@ def upscale(src, out_path, scale=2, model_key="fast"):
         if in_pixels * scale * scale > MAX_OUTPUT_PIXELS:
             return _lanczos_upscale(src, out_path, scale)
 
-    cv_name, model_path = _model_path(model_key, scale)
-    if not model_path:
+    if model_key == "auto":
+        return _adaptive_upscale(cv2, img, src, out_path, scale, in_pixels)
+
+    # Downgrade EDSR -> FSRCNN when the input is too big for a CPU render.
+    downgraded = model_key == "best" and in_pixels > EDSR_MAX_INPUT_PIXELS
+    if downgraded:
+        model_key = "fast"
+
+    if not _model_path(model_key, scale)[1]:
         # Requested model file missing — try the other one before Lanczos.
-        alt = "fast" if model_key == "best" else "best"
-        cv_name, model_path = _model_path(alt, scale)
-        model_key = alt
-        if not model_path:
+        model_key = "fast" if model_key == "best" else "best"
+        if not _model_path(model_key, scale)[1]:
             return _lanczos_upscale(src, out_path, scale)
 
     try:
-        from model_manager import global_model_manager
-
-        def _load_sr():
-            sr = cv2.dnn_superres.DnnSuperResImpl_create()
-            sr.readModel(model_path)
-            sr.setModel(cv_name, scale)
-            return sr, {"engine": cv_name, "scale": scale}
-
-        def _unload_sr(sr_instance):
-            del sr_instance
-
-        model_id = f"image_superres_{cv_name}_x{scale}"
-        with global_model_manager.session(model_id, _load_sr, _unload_sr) as (sr, meta):
-            result = sr.upsample(img)
-            ext = os.path.splitext(out_path)[1].lower()
-            params = ([cv2.IMWRITE_JPEG_QUALITY, 95]
-                      if ext in (".jpg", ".jpeg") else [])
-            cv2.imwrite(out_path, result, params)
-            rh, rw = result.shape[:2]
-            return {
-                "engine": cv_name,
-                "scale": scale,
-                "size": (rw, rh),
-                "downgraded": downgraded,
-            }
+        info = _run_superres(cv2, img, model_key, scale, out_path)
+        info["downgraded"] = downgraded
+        return info
     except Exception:
         return _lanczos_upscale(src, out_path, scale)
 
+
+def _adaptive_upscale(cv2, img, src, out_path, scale, in_pixels):
+    from model_manager import (global_quality_governor, CapabilityVariant,
+                               TIER_BALANCED, TIER_MAX)
+
+    cores = os.cpu_count() or 1
+    # Many-core machines can afford the detail model on larger inputs.
+    best_pixel_limit = EDSR_MAX_INPUT_PIXELS * (2 if cores >= 12 else 1)
+    best_ram = _superres_ram_estimate_gb(in_pixels, scale) * 2.5
+    ladder = [
+        CapabilityVariant(
+            "best",
+            tier=TIER_MAX if in_pixels > EDSR_MAX_INPUT_PIXELS else TIER_BALANCED,
+            min_ram_gb=best_ram,
+            min_cpu_cores=4,
+            is_available=lambda: in_pixels <= best_pixel_limit and bool(_model_path("best", scale)[1]),
+            public_label="Best Detail",
+        ),
+        CapabilityVariant("fast", public_label="Fast Neural"),
+    ]
+
+    def _operate(variant):
+        if not _model_path(variant.variant_id, scale)[1]:
+            raise FileNotFoundError("Enhancement model is not installed.")
+        need = best_ram if variant.variant_id == "best" else 0.0
+        return _run_superres(cv2, img, variant.variant_id, scale, out_path, min_free_ram_gb=need)
+
+    try:
+        info, variant = global_quality_governor.run("image.superres", ladder, _operate)
+    except Exception:
+        return _lanczos_upscale(src, out_path, scale)
+    info["downgraded"] = False
+    info["adaptive"] = True
+    return info
 
 
 def available_engines():
@@ -182,63 +232,114 @@ def enhance_photo_clarity(src, out_path, denoise_strength=5, sharpen_strength=1.
         return {"status": "success", "engine": "pil_fallback"}
 
 
-def remove_bg(src_path, out_path, model_name="isnet-general-use", alpha_matting=True):
-    """
-    Strips background from image using rembg (ONNX model).
-    Wrapped in global_model_manager for zero-idle memory lifecycle.
-    model_name: 'isnet-general-use' (Ultra/HD Detail), 'u2net' (Studio), 'u2net_human_seg' (Portrait), 'u2netp' (Fast)
-    """
-    try:
-        from rembg import remove, new_session
-        from PIL import Image, ImageFilter
-        from model_manager import global_model_manager
+CUTOUT_BASELINE_MODEL = "isnet-general-use"
+CUTOUT_MAX_MODEL = "birefnet-general"
+CUTOUT_VALID_MODELS = (CUTOUT_MAX_MODEL, "isnet-general-use", "u2net", "u2net_human_seg", "u2netp")
+CUTOUT_ADAPTIVE_ALIASES = {"auto", "ultra", "ultra-hd"}
+CUTOUT_ALIASES = {
+    "studio": "u2net",
+    "portrait": "u2net_human_seg",
+    "fast": "u2netp",
+}
 
-        valid_models = ("isnet-general-use", "u2net", "u2net_human_seg", "u2netp")
-        if model_name not in valid_models:
-            model_name = "isnet-general-use"
 
-        def _load_rembg():
-            session = new_session(model_name)
-            return session, {"engine": f"rembg_{model_name}"}
+def _cutout_model_installed(model_name):
+    """Only use weights already on disk so adaptive upgrades never trigger a download."""
+    home = os.environ.get("U2NET_HOME") or os.path.join(
+        os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~"), ".u2net")
+    path = os.path.join(home, f"{model_name}.onnx")
+    return os.path.exists(path) and os.path.getsize(path) > 0
 
-        def _unload_rembg(session):
-            del session
 
-        model_id = f"rembg_session_{model_name}"
-        with global_model_manager.session(model_id, _load_rembg, _unload_rembg) as (session, meta):
-            input_img = Image.open(src_path)
-            
-            if alpha_matting:
-                try:
-                    output_img = remove(
-                        input_img,
-                        session=session,
-                        alpha_matting=True,
-                        alpha_matting_foreground_threshold=240,
-                        alpha_matting_background_threshold=10,
-                        alpha_matting_erode_size=10,
-                        post_process_mask=True
-                    )
-                except Exception:
-                    output_img = remove(input_img, session=session, post_process_mask=True)
-            else:
+def _cutout_with(model_name, src_path, out_path, alpha_matting, min_free_ram_gb=0.0):
+    from rembg import remove, new_session
+    from PIL import Image, ImageFilter
+    import numpy as np
+    from model_manager import global_model_manager
+
+    def _load_rembg():
+        session = new_session(model_name)
+        return session, {"engine": f"rembg_{model_name}"}
+
+    def _unload_rembg(session):
+        del session
+
+    model_id = f"rembg_session_{model_name}"
+    with global_model_manager.session(model_id, _load_rembg, _unload_rembg,
+                                      min_free_ram_gb=min_free_ram_gb) as (session, meta):
+        with Image.open(src_path) as opened:
+            input_img = opened.copy()
+
+        if alpha_matting:
+            try:
+                output_img = remove(
+                    input_img,
+                    session=session,
+                    alpha_matting=True,
+                    alpha_matting_foreground_threshold=240,
+                    alpha_matting_background_threshold=10,
+                    alpha_matting_erode_size=10,
+                    post_process_mask=True
+                )
+            except Exception as error:
+                from model_manager import is_resource_error
+                if is_resource_error(error):
+                    raise
                 output_img = remove(input_img, session=session, post_process_mask=True)
+        else:
+            output_img = remove(input_img, session=session, post_process_mask=True)
 
-            # ── ALPHA EDGE ANTI-ALIASING PASS ──
-            if output_img.mode == "RGBA":
-                r, g, b, a = output_img.split()
-                a_blurred = a.filter(ImageFilter.GaussianBlur(radius=0.6))
-                import numpy as np
-                a_arr = np.array(a, dtype=np.uint8)
-                ab_arr = np.array(a_blurred, dtype=np.uint8)
-                # Anti-alias boundary pixels to eliminate jagged stair-stepping
-                edge_mask = (a_arr > 0) & (a_arr < 255)
-                a_arr[edge_mask] = ab_arr[edge_mask]
-                smooth_a = Image.fromarray(a_arr)
-                output_img = Image.merge("RGBA", (r, g, b, smooth_a))
+        # ── ALPHA EDGE ANTI-ALIASING PASS ──
+        if output_img.mode == "RGBA":
+            r, g, b, a = output_img.split()
+            a_blurred = a.filter(ImageFilter.GaussianBlur(radius=0.6))
+            a_arr = np.array(a, dtype=np.uint8)
+            ab_arr = np.array(a_blurred, dtype=np.uint8)
+            # Anti-alias boundary pixels to eliminate jagged stair-stepping
+            edge_mask = (a_arr > 0) & (a_arr < 255)
+            a_arr[edge_mask] = ab_arr[edge_mask]
+            smooth_a = Image.fromarray(a_arr)
+            output_img = Image.merge("RGBA", (r, g, b, smooth_a))
 
-            output_img.save(out_path, format="PNG")
-            return {"engine": f"rembg_{model_name}", "status": "success"}
+        output_img.save(out_path, format="PNG")
+        return {"engine": f"rembg_{model_name}", "status": "success"}
+
+
+def remove_bg(src_path, out_path, model_name="auto", alpha_matting=True):
+    """
+    Strips background from an image with a local segmentation network.
+    Wrapped in global_model_manager for zero-idle memory lifecycle.
+
+    model_name: 'auto' / 'ultra-hd' (adaptive: the highest-fidelity network the
+    hardware can sustain, baseline 'isnet-general-use'), 'studio', 'portrait',
+    'fast', or an explicit supported network id.
+    """
+    requested = str(model_name or "auto").strip().lower()
+    try:
+        if requested in CUTOUT_ADAPTIVE_ALIASES:
+            from model_manager import global_quality_governor, CapabilityVariant, TIER_MAX
+
+            ladder = [
+                CapabilityVariant(
+                    CUTOUT_MAX_MODEL, tier=TIER_MAX, min_ram_gb=6.0, min_cpu_cores=8,
+                    is_available=lambda: _cutout_model_installed(CUTOUT_MAX_MODEL),
+                    public_label="Maximum Detail Cutout",
+                ),
+                CapabilityVariant(CUTOUT_BASELINE_MODEL, public_label="Ultra HD Cutout"),
+            ]
+
+            def _operate(variant):
+                need = 3.0 if variant.variant_id == CUTOUT_MAX_MODEL else 0.0
+                return _cutout_with(variant.variant_id, src_path, out_path, alpha_matting, need)
+
+            info, _variant = global_quality_governor.run("image.cutout", ladder, _operate)
+            info["adaptive"] = True
+            return info
+
+        resolved = CUTOUT_ALIASES.get(requested, requested)
+        if resolved not in CUTOUT_VALID_MODELS:
+            resolved = CUTOUT_BASELINE_MODEL
+        return _cutout_with(resolved, src_path, out_path, alpha_matting)
     except Exception as e:
         raise RuntimeError(f"AI Background Removal failed: {str(e)}")
 
