@@ -4,6 +4,8 @@ Audio, Video & Image Studio is a browser-based media editor backed by a single P
 
 This document describes the implementation reviewed on 17 October 2026. The [source map](ARCHITECTURE_SOURCE_MAP.md) inventories every application Python module, declared HTTP route, copilot tool, browser controller, template and built-in skill. The [developer architecture](SYSTEM_ARCHITECTURE_DETAILED.md) explains execution and operational limits.
 
+For an interactive tour, open the [architecture explorer](architecture/README.md). It provides six views with source-linked component details, connection tracing, guided steps, pan/zoom and theme-aware SVG export. The light theme is the default; dark is optional.
+
 ## System context
 
 ![System context: users, trusted host, model downloads and optional logging](diagrams/system-context.svg)
@@ -63,7 +65,7 @@ Temporary cleanup is age-based and protects saved-project references. It does no
 
 ## Maintain these diagrams
 
-The editable Mermaid sources and rendered SVGs are in [`docs/diagrams/`](diagrams/README.md). SVGs render directly on GitHub and can be reused in presentations. Regenerate the source map after changing routes, tools or modules:
+The interactive view definitions live in [`docs/architecture/`](architecture/README.md). Designed SVG exports and portable Mermaid references are in [`docs/diagrams/`](diagrams/README.md). SVGs render directly on GitHub and can be reused in presentations. Regenerate the source map after changing routes, tools or modules:
 
 ```powershell
 python scripts/update_architecture.py

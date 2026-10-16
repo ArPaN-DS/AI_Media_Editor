@@ -205,6 +205,17 @@ Vendored third-party JavaScript is excluded from this first-party inventory.
 | [templates/studio.html](../templates/studio.html) | Template / partial |
 | [templates/video.html](../templates/video.html) | Template / partial |
 
+## Interactive documentation
+
+The architecture explorer runs independently of the media application. It opens locally without dependencies; these files define its content, interaction and visual design.
+
+| Source | Purpose |
+|---|---|
+| [docs/architecture/index.html](../docs/architecture/index.html) | Accessible documentation shell |
+| [docs/architecture/architecture.js](../docs/architecture/architecture.js) | Source-grounded components and six diagram layouts |
+| [docs/architecture/explorer.js](../docs/architecture/explorer.js) | SVG renderer, inspection, tracing, pan/zoom and export |
+| [docs/architecture/explorer.css](../docs/architecture/explorer.css) | Responsive typography, colors and interface layout |
+
 ## Built-in skill workflows
 
 These versioned instructions expand into validated tools. Personal workflows live in ignored `user_skills/` (or `COPILOT_USER_SKILLS_DIR`).

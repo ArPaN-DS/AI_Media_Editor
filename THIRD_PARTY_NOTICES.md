@@ -83,3 +83,8 @@ Key dependencies include:
 ---
 
 **Last Updated**: October 2026
+
+
+## Architecture documentation technology marks
+
+The self-contained architecture explorer embeds six technology SVG marks from Simple Icons (project license CC0-1.0). Brand rights and individual terms remain with their respective owners. See [the icon provenance](docs/architecture/ICONS.md) for source revisions, source links and the upstream disclaimer. The explorer makes no external icon requests.

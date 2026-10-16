@@ -27,6 +27,8 @@ Read [the engineering guide](docs/ENGINEERING.md) for the mechanisms, source ref
 
 ## System architecture
 
+**Explore the system:** [Interactive architecture atlas](docs/architecture/README.md) — six views with component inspection, source links, connection tracing, guided walkthroughs, pan/zoom and SVG export. Open `docs/architecture/index.html` locally; GitHub displays the static diagrams below.
+
 ![Studio components: browser, Flask, copilot, processors and private local storage](docs/diagrams/system-components.svg)
 
 Studio is a single Python/Flask application with four route blueprints. Its copilot plans validated media operations and dispatches Audio, Video, Vision and Inspector classes. Long jobs use background threads and HTTP polling. A separately hosted loopback model service is optional.
@@ -36,7 +38,8 @@ Studio is a single Python/Flask application with four route blueprints. Its copi
 | [Architecture overview](docs/SYSTEM_ARCHITECTURE_OVERVIEW.md) | System context, boundaries and end-to-end behavior |
 | [Developer architecture](docs/SYSTEM_ARCHITECTURE_DETAILED.md) | Execution, storage, resources, engine map and limitations |
 | [Generated source map](docs/ARCHITECTURE_SOURCE_MAP.md) | Every declared route, copilot tool, application Python module, controller, template and built-in skill |
-| [Diagram sources and exports](docs/diagrams/README.md) | Six editable Mermaid diagrams with GitHub-ready SVGs |
+| [Interactive architecture explorer](docs/architecture/README.md) | Six interactive views with inspection, tracing and export |
+| [Diagram sources and exports](docs/diagrams/README.md) | Designed SVG exports and portable Mermaid references |
 | [Codebase review](docs/CODEBASE_REVIEW.md) | Evidence, fixes, verification and prioritized follow-up work |
 
 ## What you can do

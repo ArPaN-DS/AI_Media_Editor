@@ -118,4 +118,4 @@ A 500 MiB request limit does not bound the total assembled size of a multi-reque
 
 The generated source map covers all first-party Python modules and scripts, all declared routes, all 31 copilot tools, first-party JavaScript, templates, built-in skill files and public configuration key names. External package versions and licensing remain in `requirements.txt` and `THIRD_PARTY_NOTICES.md`.
 
-When changing an execution path, update its `.mmd` source, render its `.svg`, update the narrative and regenerate the inventory. Review diagrams against handlers and call sites, not module names alone. Run source-map and repository-hygiene checks before publishing. See [diagram maintenance](diagrams/README.md).
+When changing an execution path, update its interactive definition in `docs/architecture/architecture.js`, export the matching SVG from the explorer, update the Mermaid reference and narrative, and regenerate the inventory. Review diagrams against handlers and call sites, not module names alone. Run source-map and repository-hygiene checks before publishing. See [diagram maintenance](diagrams/README.md).

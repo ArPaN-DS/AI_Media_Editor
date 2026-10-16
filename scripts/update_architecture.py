@@ -133,6 +133,19 @@ def generate():
     for path in sorted([p for p in (ROOT / "static").rglob("*.js") if "vendor" not in p.parts]
                        + list((ROOT / "templates").glob("*.html"))):
         lines.append(f"| {link(path)} | {'Template / partial' if path.suffix == '.html' else 'Browser controller'} |")
+    lines.extend(["", "## Interactive documentation", "",
+                  "The architecture explorer runs independently of the media application. "
+                  "It opens locally without dependencies; these files define its content, interaction and visual design.",
+                  "", "| Source | Purpose |", "|---|---|"])
+    for name, purpose in [
+        ("index.html", "Accessible documentation shell"),
+        ("architecture.js", "Source-grounded components and six diagram layouts"),
+        ("explorer.js", "SVG renderer, inspection, tracing, pan/zoom and export"),
+        ("explorer.css", "Responsive typography, colors and interface layout"),
+    ]:
+        path = ROOT / "docs" / "architecture" / name
+        if path.exists():
+            lines.append(f"| {link(path)} | {purpose} |")
     lines.extend(["", "## Built-in skill workflows", "",
                   "These versioned instructions expand into validated tools. Personal workflows live "
                   "in ignored `user_skills/` (or `COPILOT_USER_SKILLS_DIR`).", ""])

@@ -36,7 +36,7 @@ python scripts/update_architecture.py --check
 python scripts/check_repository_hygiene.py --history
 ```
 
-If changing a diagram, edit the `.mmd` source and regenerate its `.svg` using the [diagram guide](diagrams/README.md). The generated source map must remain current. It also checks for Python files unreachable from registered entry points; register legitimate standalone CLIs rather than keeping orphaned modules. CI also runs fatal Python lint checks; validate affected execution paths locally.
+If changing a designed diagram, update its definition in `docs/architecture/architecture.js` and export its SVG from the interactive explorer using the [diagram guide](diagrams/README.md). Keep the portable Mermaid reference aligned with topology changes. The generated source map must remain current. It also checks for Python files unreachable from registered entry points; register legitimate standalone CLIs rather than keeping orphaned modules. CI also runs fatal Python lint checks; validate affected execution paths locally.
 
 For performance changes, follow the [measurement requirements](PERFORMANCE.md). Do not publish speedup percentages without reproducible inputs, configuration, baseline and quality checks.
 

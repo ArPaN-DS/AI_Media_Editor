@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Explore Media Studio's local media pipelines, agent workflows and resource-aware architecture.">
+  <title>Architecture explorer — Media Studio</title>
+  <link rel="stylesheet" href="explorer.css">
+  <script defer src="architecture.js"></script>
+  <script defer src="explorer.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to diagram</a>
+  <aside class="navigation" aria-label="Architecture views">
+    <a class="brand" href="../../README.md"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 20V12m6 15V5m7 24V3m7 22V7m6 13v-8"/></svg><span>Media Studio<small>Engineering atlas</small></span></a>
+    <p class="nav-heading">Explore the system</p>
+    <nav id="view-navigation" aria-label="Diagram navigation"></nav>
+    <div class="navigation-footer"><span class="local-label"><span></span>Local by architecture</span><p>Source-grounded diagrams.<br>No models, media or API calls.</p><a href="../ENGINEERING.md">Read the engineering guide <span aria-hidden="true">↗</span></a></div>
+  </aside>
+  <main class="main">
+    <header class="page-header">
+      <div class="breadcrumb"><a href="../../README.md">Documentation</a><span>/</span><span>Architecture</span></div>
+      <div class="heading-row"><div><h1>Inside Media Studio<span>.</span></h1><p>Follow the idea. Inspect the engineering.</p></div><a class="source-link" href="https://github.com/ArPaN-DS/AI_audio_video_image_editor" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4m8-8 4 4-4 4m-3-11-2 22"/></svg>View repository</a></div>
+    </header>
+    <section id="workspace" class="workspace" aria-labelledby="view-title">
+      <div class="view-header"><div><div class="view-kicker" id="view-kicker">Implementation map</div><h2 id="view-title">System components</h2><p id="view-summary"></p></div><div class="view-actions"><button type="button" id="theme-toggle" class="icon-button" aria-label="Switch diagram to dark theme" title="Change canvas theme"></button><button type="button" id="fullscreen-toggle" class="icon-button" aria-label="Enter fullscreen" title="Fullscreen diagram"></button><button type="button" id="export-svg" class="export-button">Export SVG <span aria-hidden="true">↓</span></button></div></div>
+      <div class="explorer-body">
+        <div class="canvas-column">
+          <div class="canvas-toolbar"><label class="search-box"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="component-search" type="search" placeholder="Find a component or file…" autocomplete="off" aria-label="Find a component or source file"><kbd>/</kbd></label><button type="button" id="trace-toggle" class="trace-button" aria-pressed="false">Trace connections</button></div>
+          <p id="search-status" class="search-status" role="status" aria-live="polite" hidden></p>
+          <div class="canvas is-light" id="diagram-canvas" tabindex="0" aria-label="Interactive architecture diagram. Select components for details. Drag to pan. Use plus and minus to zoom, zero to fit, and Escape to clear selection."><svg id="diagram" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svg-title svg-description"></svg><div class="canvas-controls"><button id="zoom-out" type="button" aria-label="Zoom out">−</button><output id="zoom-value" aria-live="off">100%</output><button id="zoom-in" type="button" aria-label="Zoom in">+</button><span></span><button id="fit-view" type="button">Fit view</button></div><div class="canvas-hint">Drag to explore <span>·</span> Select to inspect</div></div>
+          <div class="flow-player" id="flow-player" hidden><div><span class="flow-label">Guided walkthrough</span><p id="step-description" aria-live="polite"></p></div><div class="step-controls"><button id="step-back" class="icon-button" type="button" aria-label="Previous step">←</button><span id="step-position"></span><button id="step-next" class="icon-button" type="button" aria-label="Next step">→</button><button id="step-reset" type="button">Show all</button></div></div>
+          <div class="legend" id="legend" aria-label="Diagram legend"></div>
+        </div>
+        <aside class="inspector" aria-labelledby="inspector-title"><div class="inspector-top"><span>Component inspector</span><button id="clear-selection" type="button" class="icon-button" aria-label="Clear component selection">×</button></div><div id="inspector-content"></div></aside>
+      </div>
+      <footer class="workspace-footer"><span id="view-footnote"></span><a id="editable-source" href="../diagrams/system-components.mmd">Mermaid reference ↗</a></footer>
+    </section>
+    <section class="reading-note"><span class="note-symbol" aria-hidden="true">i</span><p><strong>A map of the implementation.</strong> Sub-agents are Python classes in one application process. Dashed connections indicate optional paths or governance. Select a component for source files, behavior and engineering constraints.</p><a href="../SYSTEM_ARCHITECTURE_DETAILED.md">Full architecture ↗</a></section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="noscript">Enable JavaScript for the interactive explorer, or <a href="../diagrams/README.md">open the static SVG diagrams</a>.</p></noscript>
+</body>
+</html>
