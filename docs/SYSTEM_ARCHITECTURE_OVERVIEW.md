@@ -1,152 +1,74 @@
-# System Architecture Overview
+# System architecture
 
-This document provides a high-level architectural overview of the **Audio, Video & Image Studio** open-source platform. It is designed for prospective users, developers, and open-source contributors who want to understand the foundational architecture and request lifecycles.
+Audio, Video & Image Studio is a browser-based media editor backed by a single Python/Flask application. Editing uses local media processors; an optional, separately hosted loopback model service helps the copilot plan operations.
 
-For an exhaustive, low-level component reference covering all internal classes, memory structures, and hardware adaptation pipelines, consult the [Detailed System Architecture](file:///docs/SYSTEM_ARCHITECTURE_DETAILED.md).
+This document describes the implementation reviewed on 17 October 2026. The [source map](ARCHITECTURE_SOURCE_MAP.md) inventories every application Python module, declared HTTP route, copilot tool, browser controller, template and built-in skill. The [developer architecture](SYSTEM_ARCHITECTURE_DETAILED.md) explains execution and operational limits.
 
----
+## System context
 
-## Architectural Principles
+![System context: users, trusted host, model downloads and optional logging](diagrams/system-context.svg)
 
-1. **Strict Local Privacy**: Zero external cloud telemetry or third-party API dependencies. All computation, inference, and rendering occur entirely on the host machine.
-2. **Hybrid Processing Topology**: Combines deterministic low-latency digital signal processing (FFmpeg, Librosa, OpenCV) with neural processing models (Demucs, Real-ESRGAN, NAFNet, Whisper, Edge-TTS).
-3. **Decoupled Autonomous Copilot**: An intelligent workflow assistant operating via standard local loopback Large/Small Language Model (LLM/SLM) endpoints (vLLM, Ollama, LM Studio) or deterministic rule-based planning fallbacks.
-4. **Adaptive Hardware Governance**: Dynamic model scaling and memory allocation responding in real time to available system RAM, VRAM, and CPU capabilities.
+**Privacy boundary:** media processing runs on the application host. Copilot prompts and optional embedding requests are restricted to loopback services. Dependency installation and model acquisition can contact external publishers. PostgreSQL activity logging is optional and can send metadata to an operator-configured database. "Local" refers to the server computer; a browser accessing another computer uploads files to that computer.
 
----
+## Application components
 
-## High-Level System Architecture Diagram
+![Application components and their implemented connections](diagrams/system-components.svg)
 
-```mermaid
-flowchart TB
-    %% ==========================================
-    %% Open Source Architecture Overview
-    %% ==========================================
+| Area | Responsibility | Implementation |
+|---|---|---|
+| Browser workspace | Waveform, timeline, canvas, playback, undo, chat and exports | `templates/`, first-party `static/*.js` and `static/js/` |
+| Application gateway | Configuration, projects, media paths, background-job state, error and response guards | `app.py` |
+| HTTP routing | Four blueprints for audio, video, image and assistant operations | `routes/` |
+| Planning | Intent extraction, workflow expansion, optional model planning, argument and dependency validation | `agent_nlu.py`, `agent_skills.py`, `agent_planner.py`, `agent_processor.py` |
+| Execution | Audio, Video, Vision and Inspector sub-agent classes; verified outputs and retries | `agent_processor.py` |
+| Media engines | FFmpeg/DSP, image operations, transcription, separation, restoration and speech synthesis | Processor modules; see [engine map](SYSTEM_ARCHITECTURE_DETAILED.md#media-engine-map) |
+| Resource governance | Admission slots, RAM/VRAM budgets, model lifecycle and quality selection | `job_scheduler.py`, `model_manager.py`, `runtime_tuning.py` |
+| Persistent context | SQLite FTS5, vector retrieval, preferences and reusable personal workflows | `agent_memory.py`, `agent_skills.py` |
 
-    subgraph ClientTier ["Client Presentation Layer (Browser)"]
-        UI_Audio["Audio Studio\n(WaveSurfer.js + Multi-track Canvas)"]
-        UI_Video["Video Editor\n(Multi-clip Timeline + WebGL Canvas)"]
-        UI_Image["Image Studio\n(Canvas Filter Engine + Transform Tools)"]
-        UI_Agent["AI Copilot Interface\n(SSE Streaming + Natural Language Chat)"]
-        UI_Core["Studio Core Hub\n(Theme Manager + Shortkey Dispatcher)"]
-    end
+Solid arrows show requests or data flow. Dashed arrows identify optional dependencies or resource governance. The diagrams are logical views: the blueprints, planner, processors and scheduler run inside the same application process. Sub-agents are Python classes, not independently deployed services.
 
-    subgraph GatewayTier ["Application Gateway & Controller Layer (Flask 3.x)"]
-        AppCore["Application Core (app.py)\nSecurity Guard, CORS, Session Context"]
-        
-        subgraph Blueprints ["Modular REST & Event Routing"]
-            Route_Audio["Audio Blueprint (/audio)\nDSP, Stem Separation, Waveforms"]
-            Route_Video["Video Blueprint (/video)\nTimeline Assembly, Filters, Transcode"]
-            Route_Image["Image Blueprint (/image)\nColor, Crop, Neural Super-Resolution"]
-            Route_Agent["Assistant Blueprint (/assistant)\nSSE Token Streaming, Execution Dispatch"]
-        end
-    end
+## End-to-end behavior
 
-    subgraph IntelligenceTier ["Autonomous AI Copilot Engine"]
-        Orchestrator["Agent Orchestrator\n(Intent Routing & Session Lifecycle)"]
-        NLU["Natural Language Unit (NLU)\n(Deterministic Slot & Intent Parser)"]
-        Planner["Deterministic & Neural Planner\n(43-Tool Capability DAG Generator)"]
-        Memory["Episodic & Vector Memory\n(SQLite FTS5 + Semantic Context)"]
-        SLMClient["Local SLM / LLM Gateway\n(Loopback OpenAI-compatible Engine)"]
-    end
+1. A user edits browser state or uploads media through an editor or the copilot. The server assigns file identifiers and inspects media when needed.
+2. Direct editor requests call media processors. Copilot requests select skills or parse intent, consult optional memory, and may ask the loopback model for a structured plan.
+3. The planner validates tool names, arguments, media types and dependencies. It can request clarification rather than execute an ambiguous edit.
+4. Short plans execute within the request. Selected long AI operations prompt the user to submit a background job, whose status the browser polls over JSON HTTP.
+5. The executor follows step dependencies, checks real input and output media, retries selected failures and returns the main result plus branch artifacts.
+6. Results are previewed or downloaded from `/processed/`. Project saves persist edit state and references in `.aviproject` files; memory observations are queued asynchronously on the synchronous chat path.
 
-    subgraph ExecutionTier ["Media Processing & Synthesis Pipelines"]
-        subgraph DeterministicEngines ["Deterministic Processing Engines"]
-            DSP_Audio["Audio DSP Pipeline\n(FFmpeg Engine + Librosa Analysis)"]
-            DSP_Video["Video Composition Pipeline\n(FFmpeg Multi-Stream Filter Graph)"]
-            DSP_Image["Image Transformation Pipeline\n(Pillow + OpenCV Core Engine)"]
-        end
+There are **31 declared copilot tools**. Direct editor routes provide additional operations. There is no implemented SSE stream, external task broker, account system or distributed worker pool.
 
-        subgraph NeuralEngines ["Specialized Neural Models"]
-            NN_Sep["Stem Separation (Demucs v4)\nVocals, Drums, Bass, Other"]
-            NN_SR["Super-Resolution (Real-ESRGAN)\nSpatial Upscaling & Restoration"]
-            NN_Deblur["NAFNet Deblurring\nNonlinear Image/Video Restoration"]
-            NN_TTS["Speech Synthesis & STT\n(Whisper ASR + Edge-TTS Engine)"]
-        end
-    end
+## Deployment and data boundaries
 
-    subgraph ResourceTier ["Resource Governance & Lifecycle"]
-        Governor["Adaptive Quality Governor\n(Hardware Tiering: Lite / Balanced / Max)"]
-        ModelManager["Model Lifecycle Manager\n(VRAM/RAM Caching & LRU Eviction)"]
-        JobQueue["Asynchronous Job Scheduler\n(Worker Thread Pool & Task Cancellation)"]
-    end
+![Deployment and private-data boundaries](diagrams/deployment-data.svg)
 
-    subgraph StorageTier ["Host Storage & State Management"]
-        FS_Uploads["Temporary Ingest Storage\n(/uploads)"]
-        FS_Processed["Render & Export Storage\n(/processed)"]
-        FS_Projects["Project State & Timelines\n(/projects)"]
-        FS_Models["Neural Model Weights Cache\n(/models)"]
-        FS_Memory["Agent Memory & Vector Stores\n(/data/copilot_memory)"]
-    end
+The default launcher binds Flask to loopback. Treat the application as a trusted, single-user workspace. It has no built-in user authentication or per-user file isolation. Network exposure requires an authenticated access boundary and deployment-specific protection; a reverse proxy alone does not add user isolation.
 
-    %% Client to Gateway connections
-    UI_Audio --> Route_Audio
-    UI_Video --> Route_Video
-    UI_Image --> Route_Image
-    UI_Agent --> Route_Agent
-    UI_Core -.-> AppCore
-    AppCore --> Blueprints
+Background status and scheduling locks live in process memory. Restarting loses job status. Multiple independent WSGI processes do not share job dictionaries or model locks, so use one application process until those mechanisms are externalized. The separate reasoning server has its own model memory, outside the Python model-lifecycle mutex.
 
-    %% Gateway to Intelligence & Execution
-    Route_Agent --> Orchestrator
-    Route_Audio --> DSP_Audio
-    Route_Audio --> NN_Sep
-    Route_Video --> DSP_Video
-    Route_Image --> DSP_Image
-    Route_Image --> NN_SR
+## Private storage and configuration
 
-    %% Copilot Internal Flows
-    Orchestrator --> NLU
-    Orchestrator --> Planner
-    Orchestrator <--> Memory
-    Planner --> SLMClient
-    Planner -.->|Dispatch Tools| ExecutionTier
+| Location | Contents | Repository policy |
+|---|---|---|
+| `.env` and environment variables | Session secret and local configuration | `.env` variants ignored; sanitized `.env.example` versioned |
+| `uploads/`, `processed/` | Source media, chunks, outputs, thumbnails, transcripts | Ignored |
+| `projects/` | Saved edit state, media references and embedded image layers | Ignored |
+| `data/copilot_memory/memory.db` | Conversation observations, preferences and retrieval indexes | Ignored; disable with `COPILOT_MEMORY=off` |
+| `user_skills/` | Personal reusable workflows | Ignored; configurable external location |
+| `models/` | Downloaded neural weights and voice packs | Ignored |
+| `logs/` or PostgreSQL | Optional filename and client activity metadata | Activity collection disabled by default |
+| Browser storage | Chat sessions, drafts and pending imports | Outside Git and server cleanup |
 
-    %% Governance & Execution
-    Governor -.->|Hardware Policy| ExecutionTier
-    Governor -.->|Model Quantization| ModelManager
-    ModelManager --> NeuralEngines
-    JobQueue --> ExecutionTier
+Temporary cleanup is age-based and protects saved-project references. It does not erase conversation memory, browser storage, external databases, backups or remote Git copies. See [storage](STORAGE.md) and [repository privacy](REPOSITORY_PRIVACY.md).
 
-    %% Storage connections
-    ExecutionTier --> FS_Uploads
-    ExecutionTier --> FS_Processed
-    AppCore --> FS_Projects
-    NeuralEngines --> FS_Models
-    Memory --> FS_Memory
+## Maintain these diagrams
 
-    %% Styling Definitions
-    classDef clientStyle fill:#1e293b,stroke:#38bdf8,stroke-width:1px,color:#f8fafc;
-    classDef gatewayStyle fill:#0f172a,stroke:#6366f1,stroke-width:1px,color:#f8fafc;
-    classDef intelligenceStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
-    classDef engineStyle fill:#14291f,stroke:#10b981,stroke-width:1px,color:#f8fafc;
-    classDef resourceStyle fill:#2a1b18,stroke:#f59e0b,stroke-width:1px,color:#f8fafc;
-    classDef storageStyle fill:#1e293b,stroke:#94a3b8,stroke-width:1px,color:#f8fafc;
+The editable Mermaid sources and rendered SVGs are in [`docs/diagrams/`](diagrams/README.md). SVGs render directly on GitHub and can be reused in presentations. Regenerate the source map after changing routes, tools or modules:
 
-    class UI_Audio,UI_Video,UI_Image,UI_Agent,UI_Core clientStyle;
-    class AppCore,Route_Audio,Route_Video,Route_Image,Route_Agent gatewayStyle;
-    class Orchestrator,NLU,Planner,Memory,SLMClient intelligenceStyle;
-    class DSP_Audio,DSP_Video,DSP_Image,NN_Sep,NN_SR,NN_Deblur,NN_TTS engineStyle;
-    class Governor,ModelManager,JobQueue resourceStyle;
-    class FS_Uploads,FS_Processed,FS_Projects,FS_Models,FS_Memory storageStyle;
+```powershell
+python scripts/update_architecture.py
+python scripts/update_architecture.py --check
+python scripts/check_repository_hygiene.py --history
 ```
 
----
-
-## Data & Request Flow Summary
-
-### 1. Direct Interactive Editing Path
-1. The user imports an asset in **Audio Studio**, **Video Editor**, or **Image Studio**.
-2. Files are chunked and staged in `/uploads` through the application gateway.
-3. Interactive manipulation (cropping, trimming, multi-region splitting, timeline positioning) is performed client-side using Web Audio and Canvas APIs.
-4. Rendering requests invoke the corresponding Blueprint endpoint (`/audio`, `/video`, or `/image`).
-5. Heavy transformations are executed either via the deterministic FFmpeg/OpenCV engines or scheduled via the neural pipeline (e.g. Demucs, Real-ESRGAN).
-6. Outputs are compiled to `/processed` and streamed back for immediate preview and download.
-
-### 2. Autonomous Copilot Path
-1. The user issues a natural language request via the assistant shell.
-2. The **NLU Unit** evaluates command structure, extracting parameters and target media assets.
-3. The **Deterministic & Neural Planner** resolves dependencies, formulating a directed acyclic execution plan consisting of registered media tools.
-4. If reasoning is enabled, the plan is synthesized via the local loopback **SLM Engine** while maintaining strict memory isolation.
-5. The plan is executed sequentially with progress pushed real-time to the browser via Server-Sent Events (SSE).
-6. State and interaction summaries are preserved in SQLite FTS5 for context continuity across editing sessions.
+Read the [review findings](CODEBASE_REVIEW.md) for verified limitations and follow-up work. These diagrams describe the current implementation; they do not imply that all optional model packs have been installed or exercised.

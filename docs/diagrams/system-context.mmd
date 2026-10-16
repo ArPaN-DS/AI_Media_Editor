@@ -1,0 +1,21 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","primaryColor":"#f0fdfa","primaryTextColor":"#134e4a","primaryBorderColor":"#0f766e","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"wrappingWidth":240,"nodeSpacing":40,"rankSpacing":55,"curve":"basis"}}}%%
+flowchart LR
+    user["User<br/>Local browser"]
+    subgraph host["User-controlled computer / trusted host"]
+        studio["Media Studio<br/>Flask + browser editors"]
+        files[("Private runtime files<br/>Media · projects · memory")]
+        models["Optional local model server<br/>OpenAI-compatible HTTP API"]
+    end
+    upstream["Package and model publishers<br/>Installation / model downloads"]
+    postgres[("Optional PostgreSQL<br/>Explicit activity logging")]
+    user -->|"HTTP · upload · edit · download"| studio
+    studio <-->|"Read / write"| files
+    studio <-->|"Loopback only · prompts / responses"| models
+    upstream -.->|"Dependency / weight downloads"| studio
+    studio -.->|"Only when logging enabled"| postgres
+    classDef person fill:#eff6ff,stroke:#2563eb,color:#172554
+    classDef service fill:#f0fdfa,stroke:#0f766e,color:#134e4a
+    classDef store fill:#fff7ed,stroke:#c2410c,color:#7c2d12
+    class user person
+    class studio,models,upstream service
+    class files,postgres store

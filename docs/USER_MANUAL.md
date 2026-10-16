@@ -228,4 +228,4 @@ Press `?` to see the shortcuts panel in the app.
 
 ---
 
-*Need more help? Open an issue on [GitHub](https://github.com/ArPaN-DS/Audio_Cutter/issues).*
+*Need more help? Open an issue on [GitHub](https://github.com/ArPaN-DS/AI_audio_video_image_editor/issues).*

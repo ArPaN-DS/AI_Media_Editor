@@ -510,11 +510,12 @@ class LocalServiceEmbedder:
 
     def embed(self, texts):
         import urllib.request
+        import reasoning_models
         request = urllib.request.Request(
             f"{self.base_url}/embeddings",
             data=json.dumps({"model": self.model_id, "input": list(texts)}).encode("utf-8"),
             headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
+        with reasoning_models.open_local_request(request, timeout=self.timeout) as response:
             body = json.loads(response.read().decode("utf-8"))
         data = sorted(body.get("data") or [], key=lambda item: item.get("index", 0))
         return np.array([item["embedding"] for item in data], dtype=np.float32)

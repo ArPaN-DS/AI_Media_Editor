@@ -1,114 +1,141 @@
-# ─── Python ───
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-dist/
-build/
-*.egg
-
-# ─── Virtual Environments ───
-venv/
-venv*/
-env/
-.venv/
-audio_cutter/
+# Private environment and credentials
 .env
+.env.*
+*.env
+.envrc
+!/.env.example
+.netrc
+.pypirc
+.secrets/
+.aws/
+.ssh/
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
 
-# ─── Uploads & Processed files (NEVER commit user media) ───
-uploads/
-!uploads/.gitkeep
-processed/
-!processed/.gitkeep
-logs/
-!logs/.gitkeep
-
-# ─── Downloaded Models (Whisper, Super-Res, TTS, Demucs) ───
-models/
-!models/.gitkeep
-
-# ─── Projects (personal studio saves) ───
-projects/
-!projects/.gitkeep
-
-# ─── Copilot Memory & user data ───
+# Runtime data: ignore contents, keep optional empty directory markers
+/uploads/*
+!/uploads/.gitkeep
+/processed/*
+!/processed/.gitkeep
+/projects/*
+!/projects/.gitkeep
+/logs/*
+!/logs/.gitkeep
+/models/*
+!/models/.gitkeep
 data/
 memory/
 user_skills/
+*.aviproject
+*.srt
+*.vtt
+*.jsonl
+*.har
+*.dump
+*.bak
 *.sqlite
 *.sqlite3
 *.db
 *.db-wal
 *.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.log
+*.log.*
 
-# ─── Audio / Video / Image — personal media files ───
-*.wav
-*.mp3
-*.mp4
-*.mov
-*.avi
-*.mkv
-*.webm
-*.flac
-*.ogg
-*.m4a
-*.aac
-*.wma
-*.opus
-*.aiff
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.webp
-*.bmp
-*.tiff
-*.tif
-*.heic
-*.raw
-*.psd
-*.svg
-# Keep the brand-mark SVG that is part of the product UI
-!static/brand-mark.svg
-# Keep logo
-!static/logo.png
+# Personal media, including uppercase extensions
+*.[wW][aA][vV]
+*.[mM][pP]3
+*.[mM][pP]4
+*.[mM][oO][vV]
+*.[aA][vV][iI]
+*.[wW][mM][vV]
+*.[fF][lL][vV]
+*.[mM]4[vV]
+*.[mM][kK][vV]
+*.[wW][eE][bB][mM]
+*.[fF][lL][aA][cC]
+*.[oO][gG][gG]
+*.[mM]4[aA]
+*.[aA][aA][cC]
+*.[wW][mM][aA]
+*.[oO][pP][uU][sS]
+*.[aA][iI][fF][fF]
+*.[aA][iI][fF]
+*.[mM]4[bB]
+*.[aA][mM][rR]
+*.[jJ][pP][gG]
+*.[jJ][pP][eE][gG]
+*.[pP][nN][gG]
+*.[gG][iI][fF]
+*.[wW][eE][bB][pP]
+*.[bB][mM][pP]
+*.[tT][iI][fF][fF]
+*.[tT][iI][fF]
+*.[hH][eE][iI][cC]
+*.[rR][aA][wW]
+*.[pP][sS][dD]
+*.[sS][vV][gG]
+# Version only intentional public product/diagram assets
+!/static/brand-mark.svg
+!/static/logo.png
+!/docs/diagrams/*.svg
 
-# ─── Test files — never commit personal test data ───
+# Downloaded model weights outside the standard cache
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.pb
+
+# Personal test scripts, fixtures and generated results
 test_*.py
 *_test.py
 *_test.js
 e2e_*.py
 *_eval.py
-slm_eval.py
 perf/
 static/samples/
-dummy.wav
-test_audio.wav
 test_media_scratch/
-*.pytest_cache/
+.pytest_cache/
 .coverage
 htmlcov/
 
-# ─── Performance & benchmark artifacts ───
-perf/
+# Python and build output
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
 
-# ─── IDE ───
+# Virtual environments
+venv/
+venv*/
+env/
+.venv/
+audio_cutter/
+
+# Local tools, editors and private profile directories
 .vscode/
 .idea/
+.agent/
 *.swp
 *.swo
 *~
-.agent/
-
-# ─── OS ───
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# ─── Internal profile dirs ───
 github_profile/
 github_profile_repo/
 
-# ─── Misc logs ───
-*.log
+# Operating-system artifacts
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,22 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","primaryColor":"#f0fdfa","primaryTextColor":"#134e4a","primaryBorderColor":"#0f766e","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"wrappingWidth":240,"nodeSpacing":40,"rankSpacing":55,"curve":"basis"}}}%%
+flowchart TB
+    request["Requested media capability<br/>Input work units + quality ceiling"] --> snapshot["Probe available CPU / RAM / GPU memory<br/>Subtract concurrent job reservations"]
+    snapshot --> ladder["Build eligible quality ladder<br/>Hardware fit · failure cooldown · learned runtime budget"]
+    ladder --> admit["Reserve resources / scheduler admission<br/>model · gpu · cpu · encode classes"]
+    admit --> managed["Managed in-process model session<br/>Single active heavy model mutex"]
+    managed --> run["Execute selected variant"]
+    run --> outcome{"Outcome"}
+    outcome -->|"Success"| learn["Update EWMA runtime estimate<br/>Return verified result"]
+    outcome -->|"Resource failure"| demote["Record failure / apply cooldown<br/>Try eligible lower-quality variant"]
+    demote --> admit
+    outcome -->|"Other unrecovered error"| error["Return controlled step failure"]
+    learn --> release["Release reservations / managed model<br/>Default immediate offload; optional brief keepalive"]
+    error --> release
+    note["Scope: governed processor paths in one Python process.<br/>A separately hosted reasoning server owns its own model memory."]
+    release -.-> note
+    classDef process fill:#f0fdfa,stroke:#0f766e,color:#134e4a
+    classDef policy fill:#eff6ff,stroke:#2563eb,color:#172554
+    classDef result fill:#fff7ed,stroke:#c2410c,color:#7c2d12
+    class request,admit,managed,run process
+    class snapshot,ladder,outcome,demote policy
+    class learn,error,release,note result

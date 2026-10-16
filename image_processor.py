@@ -9,7 +9,10 @@ Falls back to high-quality Lanczos + unsharp mask if a model is missing.
 """
 
 import os
+import logging
 from PIL import Image, ImageFilter
+
+_log = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, "models")

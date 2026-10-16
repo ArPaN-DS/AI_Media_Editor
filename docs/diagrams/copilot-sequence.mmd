@@ -1,0 +1,52 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","primaryColor":"#f0fdfa","primaryTextColor":"#134e4a","primaryBorderColor":"#0f766e","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"wrappingWidth":240,"nodeSpacing":40,"rankSpacing":55,"curve":"basis"}}}%%
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as Browser copilot
+    participant API as routes/assistant.py
+    participant Planner as agent_processor + planner
+    participant Memory as Skills + local memory
+    participant LLM as Optional loopback model
+    participant Worker as app.py background worker
+    participant Engine as Executor + processors
+    User->>UI: Select media and describe edit
+    UI->>API: POST /api/agent/upload (or chunk + complete)
+    API-->>UI: Media identifier and inspected context
+    UI->>API: POST /api/agent/chat
+    API->>Planner: query_agent_orchestrator(...)
+    Planner->>Memory: Skill expansion / relevant context
+    opt Local reasoning selected and available
+        Planner->>LLM: Budgeted structured planning request
+        LLM-->>Planner: Proposed plan
+    end
+    Note over Planner: Validate tools, arguments, media types and dependencies
+    Planner-->>API: Validated plan or clarification
+    alt Clarification needed
+        API-->>UI: JSON clarification options
+    else Short edit
+        API->>Engine: execute_agent_plan(...)
+        Engine-->>API: Verified outputs / per-step results
+        API->>Memory: Queue chat observation
+        API-->>UI: JSON result and artifact URLs
+    else Long edit
+        API-->>UI: Background-job confirmation prompt
+        User->>UI: Confirm
+        UI->>API: POST /api/agent/job/submit
+        API->>Worker: Start daemon thread
+        API-->>UI: job_id
+        Worker->>Engine: execute_agent_plan(...)
+        loop While browser waits
+            UI->>API: GET /api/agent/job/{job_id}
+            API-->>UI: In-memory job status
+        end
+        opt User requests cancellation
+            UI->>API: POST /api/agent/job/{job_id}/cancel
+            API->>Worker: Set cancellation flag
+        end
+        Engine-->>Worker: Results or failure
+        Note over Worker: Current worker checks cancellation after executor returns
+        UI->>API: GET /api/agent/job/{job_id}
+        API-->>UI: Final status and output URL
+    end
+    UI->>API: GET /processed/{filename}
+    API-->>User: Download / preview output

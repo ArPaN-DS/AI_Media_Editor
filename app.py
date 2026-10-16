@@ -59,7 +59,9 @@ def inject_brand():
 
 
 secret = os.environ.get("FLASK_SECRET_KEY")
-if not secret or secret == "change-me-in-production":
+if not secret or secret.strip().lower() in {
+    "change-me-in-production", "your-very-long-random-secret-key-here"
+}:
     import secrets
     app.secret_key = secrets.token_hex(32)
 else:

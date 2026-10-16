@@ -1,103 +1,47 @@
-# 🤝 Contributing to Audio Cutter Pro
+# Contributing
 
-Thank you for your interest in contributing! Here's how to get started.
+Contributions should make the local media workspace more useful, inspectable and reliable. Start with the [README](../README.md), [engineering guide](ENGINEERING.md) and [architecture](SYSTEM_ARCHITECTURE_OVERVIEW.md).
 
----
+## Development setup
 
-## 📋 How to Contribute
+Fork the repository through GitHub, then clone your fork and create a branch:
 
-### 1. Fork & Clone
-```bash
-git fork https://github.com/ArPaN-DS/Audio_Cutter.git
-git clone https://github.com/YOUR_USERNAME/Audio_Cutter.git
-cd Audio_Cutter
+```powershell
+git clone https://github.com/YOUR_USERNAME/AI_audio_video_image_editor.git
+cd AI_audio_video_image_editor
+git switch -c feature/describe-the-change
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-### 2. Create a Branch
-```bash
-git checkout -b feature/your-feature-name
+Generate a random `FLASK_SECRET_KEY`, set it in your private `.env`, and follow [SETUP.md](SETUP.md). Keep the application in a trusted local environment during development.
+
+## Scope a contribution
+
+Describe the concrete problem and resulting behavior. Include affected media types, input constraints, optional dependencies, quality/resource implications and failure behavior. Keep unrelated refactors separate.
+
+For a new copilot capability, update the processor, `ToolSpec`, specialist dispatch, validation, local intent support and relevant workflow instructions together. Document quality variants, model acquisition and licenses. A new HTTP route alone does not create a copilot tool.
+
+For frontend changes, preserve keyboard access, focus behavior, responsive layouts and meaningful error/progress states. Use the existing styles and browser-controller structure unless a larger migration is explicitly part of the proposal.
+
+## Privacy and validation
+
+Do not commit private recordings, photos, videos, transcripts, chat histories, project saves, credentials or runtime logs. Use generated inputs in temporary directories. Existing personal test scripts/fixtures were removed; there is no maintained full regression suite. Report exactly what you ran and which optional engines were unavailable. New synthetic regression coverage is welcome when its files and ignore-policy changes are explicitly reviewed.
+
+```powershell
+python scripts/update_architecture.py
+python scripts/update_architecture.py --check
+python scripts/check_repository_hygiene.py --history
 ```
 
-### 3. Make Your Changes
-- Follow the code style of the existing codebase
-- Test your changes locally before submitting
-- Update documentation if needed
+If changing a diagram, edit the `.mmd` source and regenerate its `.svg` using the [diagram guide](diagrams/README.md). The generated source map must remain current. It also checks for Python files unreachable from registered entry points; register legitimate standalone CLIs rather than keeping orphaned modules. CI also runs fatal Python lint checks; validate affected execution paths locally.
 
-### 4. Commit & Push
-```bash
-git add .
-git commit -m "feat: description of your change"
-git push origin feature/your-feature-name
-```
+For performance changes, follow the [measurement requirements](PERFORMANCE.md). Do not publish speedup percentages without reproducible inputs, configuration, baseline and quality checks.
 
-### 5. Open a Pull Request
-- Go to the [repository on GitHub](https://github.com/ArPaN-DS/Audio_Cutter)
-- Click "New Pull Request"
-- Describe your changes clearly
+## Pull requests
 
----
+Use the PR template, explain why the change is needed and describe the final behavior for a reviewer who has not seen prior conversation. Include meaningful validation and material limits. Inspect the staged diff before pushing; CI cannot retract private data already uploaded to the hosting provider.
 
-## 📐 Code Style
-
-### Python (Backend)
-- Follow PEP 8
-- Use meaningful variable names
-- Add comments for complex logic
-- Keep functions small and focused
-
-### JavaScript (Frontend)
-- Use `const` / `let` (never `var`)
-- Use arrow functions where appropriate
-- Add comments for complex logic
-
-### CSS
-- Follow the existing design system (CSS custom properties in `:root`)
-- Use the existing spacing / radius / color variables
-- Don't add new utility frameworks
-
----
-
-## 🐛 Reporting Bugs
-
-Open an issue on [GitHub Issues](https://github.com/ArPaN-DS/Audio_Cutter/issues) with:
-
-1. **Description** of the bug
-2. **Steps to reproduce**
-3. **Expected behavior** vs **actual behavior**
-4. **Browser & OS** information
-5. **Screenshots** (if applicable)
-
----
-
-## 💡 Feature Requests
-
-Open an issue with the `enhancement` label describing:
-1. What the feature should do
-2. Why it would be useful
-3. Any mockups or examples
-
----
-
-## 📦 Project Architecture
-
-```
-app.py          → Flask routes + audio processing logic
-logger.py       → PostgreSQL upload logging
-static/
-  style.css     → Complete design system (1900+ lines)
-  script.js     → WaveSurfer.js integration + UI logic (700+ lines)
-  logo.png      → App logo
-templates/
-  index.html    → Single-page Jinja2 template
-```
-
-### Key Technologies
-- **Flask** — Python web framework
-- **Pydub** — Audio manipulation (wraps FFmpeg)
-- **WaveSurfer.js** — Browser-based waveform rendering
-- **Font Awesome** — Icons
-- **Google Fonts (Inter)** — Typography
-
----
-
-Thank you for contributing! 🎵
+Review the [code of conduct](../CODE_OF_CONDUCT.md), [third-party notices](../THIRD_PARTY_NOTICES.md) and [security policy](../SECURITY.md). Report vulnerabilities privately through the repository's security-advisory channel instead of public issues. Feature requests and ordinary bugs can use [GitHub Issues](https://github.com/ArPaN-DS/AI_audio_video_image_editor/issues).

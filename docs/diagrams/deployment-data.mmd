@@ -1,0 +1,31 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","primaryColor":"#f0fdfa","primaryTextColor":"#134e4a","primaryBorderColor":"#0f766e","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"wrappingWidth":240,"nodeSpacing":40,"rankSpacing":55,"curve":"basis"}}}%%
+flowchart LR
+    subgraph client["Browser boundary"]
+        browser["Editor UI + copilot<br/>Browser-local state / downloads"]
+    end
+    subgraph trusted["Trusted application host / one Python process"]
+        flask["Flask application<br/>Loopback listener by default"]
+        volatile["Volatile state<br/>Job dictionary · threads · model handles"]
+        private[("Private data<br/>uploads · processed · projects<br/>memory DB · user skills")]
+        config["Private .env<br/>Environment overrides template"]
+        weights[("Model cache<br/>Downloaded weights / voice packs")]
+        runtime["FFmpeg / ffprobe<br/>Optional OS speech process"]
+        llm["Separate local model service<br/>Loopback only · no HTTP proxy"]
+        logs[("Activity CSV<br/>Off by default")]
+    end
+    remote[("Optional logging database<br/>Operator-configured PostgreSQL")]
+    browser <-->|"HTTP · no built-in user accounts"| flask
+    config --> flask
+    flask <--> volatile
+    flask <--> private
+    flask --> runtime
+    flask <--> weights
+    flask <-->|"Prompts / optional embeddings"| llm
+    flask -.->|"Opt-in client / filename metadata"| logs
+    flask -.->|"Opt-in logging"| remote
+    classDef app fill:#f0fdfa,stroke:#0f766e,color:#134e4a
+    classDef store fill:#fff7ed,stroke:#c2410c,color:#7c2d12
+    classDef client fill:#eff6ff,stroke:#2563eb,color:#172554
+    class flask,volatile,runtime,llm app
+    class private,config,weights,logs,remote store
+    class browser client

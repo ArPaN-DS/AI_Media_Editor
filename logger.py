@@ -34,6 +34,9 @@ def log_upload_details(request, filename, file_size_bytes, target_format, status
     """
     Logs upload details. Attempts PostgreSQL first if configured, falls back to CSV.
     """
+    # Filenames and client metadata are personal data. Collection is opt-in.
+    if os.environ.get("MEDIA_ACTIVITY_LOGGING", "off").strip().lower() not in ("1", "true", "yes", "on"):
+        return
     # 1. GATHER DATA
     timestamp = datetime.now()
     

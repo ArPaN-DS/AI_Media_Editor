@@ -80,15 +80,38 @@ DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.
 
 
 def normalize_base_url(base_url):
-    """Return the base URL if it points at a valid HTTP/HTTPS host, else None."""
+    """Accept only literal loopback addresses or localhost, without credentials."""
     try:
         parsed = urlparse((base_url or "").strip())
         hostname = parsed.hostname
         if parsed.scheme not in {"http", "https"} or not hostname:
             return None
+        if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+            return None
+        if parsed.port is not None and not 1 <= parsed.port <= 65535:
+            return None
+        if hostname.lower() != "localhost":
+            if not ipaddress.ip_address(hostname).is_loopback:
+                return None
         return base_url.strip().rstrip("/")
     except ValueError:
         return None
+
+
+class _LocalRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if normalize_base_url(newurl) is None:
+            raise ValueError("The local model service redirected outside loopback.")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def open_local_request(request, timeout):
+    """Keep prompts local, including redirects; ignore system HTTP proxies."""
+    url = request.full_url if isinstance(request, urllib.request.Request) else request
+    if normalize_base_url(url) is None:
+        raise ValueError("A loopback model endpoint is required.")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _LocalRedirectHandler())
+    return opener.open(request, timeout=timeout)
 
 
 def chat_completions_url(base_url):
@@ -149,7 +172,7 @@ class ServedModelDiscovery:
     def _fetch_models(self, base_url):
         headers = {"Accept": "application/json", "User-Agent": DEFAULT_USER_AGENT}
         req = urllib.request.Request(f"{base_url}/models", headers=headers)
-        with urllib.request.urlopen(req, timeout=DISCOVERY_TIMEOUT_SEC) as resp:
+        with open_local_request(req, timeout=DISCOVERY_TIMEOUT_SEC) as resp:
             body = json.loads(resp.read().decode("utf-8"))
         data = body.get("data") if isinstance(body, dict) else None
         if not isinstance(data, list):
@@ -308,7 +331,7 @@ def _post_once(variant, payload):
     )
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(req, timeout=variant.options["timeout"]) as resp:
+        with open_local_request(req, timeout=variant.options["timeout"]) as resp:
             body = json.loads(resp.read().decode("utf-8"))
     except (socket.timeout, TimeoutError) as error:
         # Too slow for this machine right now: pause this tier like an OOM.

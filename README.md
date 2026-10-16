@@ -1,361 +1,125 @@
 <p align="center">
-  <img src="static/brand-mark.svg" alt="App Logo" width="80">
+  <img src="static/brand-mark.svg" alt="Studio logo" width="72">
 </p>
 
-<h1 align="center">🎵 Audio, Video & Image Studio</h1>
+<h1 align="center">Audio, Video & Image Studio</h1>
+<p align="center"><strong>A local multimedia workspace with resource-aware AI processing and a validated media copilot.</strong></p>
+<p align="center">Audio / Video / Images / Natural-language workflows / Local model inference</p>
 
-<p align="center">
-  <strong>A local, private, all-in-one multimedia editor with built-in AI assistant — no subscriptions, no cloud uploads, no accounts required</strong><br>
-  Edit audio • Edit video • Edit images • AI-assisted workflows • Transcribe • Denoise • Separate stems • All offline, on your own machine
-</p>
+Edit media manually or describe an operation to the copilot. Studio combines browser editors, local processing engines, reusable workflows and optional neural model packs in one Python application. No hosted editing account or subscription is required.
 
-<p align="center">
-  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/stargazers"><img src="https://img.shields.io/github/stars/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&logo=github&color=FFD700&labelColor=1a1a2e" alt="GitHub Stars"></a>
-  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/network/members"><img src="https://img.shields.io/github/forks/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&logo=github&color=4CAF50&labelColor=1a1a2e" alt="GitHub Forks"></a>
-  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/issues"><img src="https://img.shields.io/github/issues/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&color=FF6B6B&labelColor=1a1a2e" alt="Open Issues"></a>
-  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&color=blue&labelColor=1a1a2e" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=1a1a2e" alt="Python 3.11+">
-  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/commits/main"><img src="https://img.shields.io/github/last-commit/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&labelColor=1a1a2e" alt="Last Commit"></a>
-</p>
+## Why this project is interesting
 
----
+The engineering goes beyond placing a chat box next to an editor:
 
-## ✨ Why This App?
+| Capability | What it means in practice |
+|---|---|
+| **Resource-aware execution** | Separate admission classes for CPU, encoding, GPU and model work, with RAM/VRAM reservations for governed processing paths. |
+| **Managed AI memory** | A single active managed heavy-model session, immediate offload by default and optional short retention for repeated operations. |
+| **Adaptive processing quality** | Hardware-aware quality ladders, failure cooldowns, lower-cost fallbacks and learned runtime estimates. |
+| **Validated agentic workflows** | 31 registered tools, specialist execution classes, argument and media-type validation, dependency tracking and clarification when needed. |
+| **Failure-aware media execution** | Selected retries, output verification, blocked-dependent handling and separate main/branch artifacts. |
+| **Practical pipeline optimization** | Block-oriented loudness/EQ processing, fused video soundtrack edits, native thread tuning and budgeted reasoning prompts. |
+| **Reusable local context** | Versioned workflow skills plus optional SQLite FTS5/vector memory for preferences and repeatable edits. |
+| **An inspectable open-source design** | Editable system diagrams, a generated route/tool/module inventory and repository privacy checks. |
 
-> **100% Private. Zero Cloud. No Subscriptions.**
-> Your files never leave your machine — everything is processed locally on your own server.
+Read [the engineering guide](docs/ENGINEERING.md) for the mechanisms, source references, tradeoffs and contribution opportunities. These are implementation characteristics; no comparative performance benchmark is claimed.
 
-| 🔒 Privacy-First | 🤖 AI-Assisted | ⚡ Feature-Rich | 🌐 Browser-Based |
-|:---:|:---:|:---:|:---:|
-| All files stay on your server — never sent to cloud APIs | Built-in AI assistant for workflow help; local models for transcription, denoising, stem separation | Four dedicated editors (audio/video/image) + quick tools + manual controls | Works on any device with a browser — no app install |
+## System architecture
 
----
+![Studio components: browser, Flask, copilot, processors and private local storage](docs/diagrams/system-components.svg)
 
-## 🏛️ System Architecture
+Studio is a single Python/Flask application with four route blueprints. Its copilot plans validated media operations and dispatches Audio, Video, Vision and Inspector classes. Long jobs use background threads and HTTP polling. A separately hosted loopback model service is optional.
 
-```mermaid
-flowchart TB
-    subgraph ClientTier ["Client Presentation Layer (Browser)"]
-        UI_Audio["Audio Studio\n(WaveSurfer.js + Multi-track Canvas)"]
-        UI_Video["Video Editor\n(Multi-clip Timeline + WebGL Canvas)"]
-        UI_Image["Image Studio\n(Canvas Filter Engine + Transform Tools)"]
-        UI_Agent["AI Copilot Interface\n(SSE Streaming + Natural Language Chat)"]
-    end
+| Documentation | Purpose |
+|---|---|
+| [Architecture overview](docs/SYSTEM_ARCHITECTURE_OVERVIEW.md) | System context, boundaries and end-to-end behavior |
+| [Developer architecture](docs/SYSTEM_ARCHITECTURE_DETAILED.md) | Execution, storage, resources, engine map and limitations |
+| [Generated source map](docs/ARCHITECTURE_SOURCE_MAP.md) | Every declared route, copilot tool, application Python module, controller, template and built-in skill |
+| [Diagram sources and exports](docs/diagrams/README.md) | Six editable Mermaid diagrams with GitHub-ready SVGs |
+| [Codebase review](docs/CODEBASE_REVIEW.md) | Evidence, fixes, verification and prioritized follow-up work |
 
-    subgraph GatewayTier ["Application Gateway Layer (Flask 3.x)"]
-        AppCore["Application Core (app.py)\nSecurity Guard, CORS, Session Context"]
-        Blueprints["Route Blueprints\n(/audio, /video, /image, /assistant)"]
-    end
+## What you can do
 
-    subgraph IntelligenceTier ["Autonomous AI Copilot Engine"]
-        Orchestrator["Agent Orchestrator\n(Intent Routing & Session Lifecycle)"]
-        NLU["Natural Language Unit (NLU)\n(Deterministic Slot & Intent Parser)"]
-        Planner["Deterministic & Neural Planner\n(43-Tool Capability DAG Generator)"]
-        Memory["Episodic & Vector Memory\n(SQLite FTS5 + Semantic Context)"]
-        SLMClient["Local SLM / LLM Gateway\n(Loopback OpenAI-compatible Engine)"]
-    end
+| Workspace | Functionality |
+|---|---|
+| **Audio** | Waveform editing, cuts, fades, EQ, mixing, loudness processing, conversion, transcription, denoising, speech enhancement and optional stem separation |
+| **Video** | Clip timelines, speed/audio controls, text overlays, transformations, export, thumbnails, subtitles and optional interpolation, scene detection and background matting |
+| **Image** | Canvas cropping/transforms, adjustments, filters, text/drawing, export and optional server-side cutouts, restoration, inpainting and super-resolution |
+| **Unified studio** | Shared media workspace, keyboard shortcuts, local project saves and reusable outputs |
+| **Copilot** | Natural-language operations, validated multi-step plans, clarification, reusable skills, optional memory and downloadable artifacts |
 
-    subgraph ExecutionTier ["Media Processing & Synthesis Pipelines"]
-        DSP_Audio["Audio DSP (FFmpeg + Librosa)"]
-        DSP_Video["Video Composition (FFmpeg Filter Graph)"]
-        DSP_Image["Image Transforms (Pillow + OpenCV)"]
-        NN_Sep["Stem Separation (Demucs v4)"]
-        NN_SR["Super-Resolution (Real-ESRGAN)"]
-        NN_Deblur["NAFNet Deblurring & Restoration"]
-        NN_TTS["Speech Synthesis (Whisper + Edge-TTS)"]
-    end
+Advanced features depend on installed packages, model weights and FFmpeg. Direct editor functions and copilot tools have different coverage; see the [actual tool registry](docs/ARCHITECTURE_SOURCE_MAP.md#copilot-tool-registry).
 
-    subgraph ResourceTier ["Resource Governance & Storage"]
-        Governor["Adaptive Quality Governor (Lite / Balanced / Max)"]
-        ModelManager["Model Lifecycle Manager (VRAM / RAM Caching)"]
-        Storage[("Local Filesystem Storage\n(/uploads, /processed, /projects, /models)")]
-    end
+## Quick start
 
-    %% Wiring
-    ClientTier --> GatewayTier
-    GatewayTier --> IntelligenceTier
-    GatewayTier --> ExecutionTier
-    IntelligenceTier --> ExecutionTier
-    IntelligenceTier <--> Memory
-    ResourceTier -.-> ExecutionTier
-    ExecutionTier --> Storage
+Install **Python 3.11+** and **FFmpeg** for audio/video processing. On Windows, `run.bat` provides an automatic setup path. For manual setup in PowerShell:
 
-    classDef clientStyle fill:#1e293b,stroke:#38bdf8,stroke-width:1px,color:#f8fafc;
-    classDef gatewayStyle fill:#0f172a,stroke:#6366f1,stroke-width:1px,color:#f8fafc;
-    classDef intelligenceStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
-    classDef engineStyle fill:#14291f,stroke:#10b981,stroke-width:1px,color:#f8fafc;
-    classDef resourceStyle fill:#2a1b18,stroke:#f59e0b,stroke-width:1px,color:#f8fafc;
-
-    class UI_Audio,UI_Video,UI_Image,UI_Agent clientStyle;
-    class AppCore,Blueprints gatewayStyle;
-    class Orchestrator,NLU,Planner,Memory,SLMClient intelligenceStyle;
-    class DSP_Audio,DSP_Video,DSP_Image,NN_Sep,NN_SR,NN_Deblur,NN_TTS engineStyle;
-    class Governor,ModelManager,Storage resourceStyle;
-```
-
-> 📖 **Architecture Documentation**:
-> - [High-Level Architecture Overview](docs/SYSTEM_ARCHITECTURE_OVERVIEW.md) — Architectural principles, data flows, and subsystem interactions.
-> - [Detailed End-to-End Component Architecture](docs/SYSTEM_ARCHITECTURE_DETAILED.md) — Comprehensive low-level reference covering all 32 Python modules, 43-tool DAG planner, memory schemas, and neural model pipelines.
-
----
-
-## 📋 What's Inside
-
-### 🎙️ Audio Editor (`/audio`)
-Edit, cut, and enhance audio with waveform precision:
-- Multi-region cutting with drag-and-drop
-- Audio effects (fade, normalize, reverse)
-- Real-time audio analysis (silence detection, BPM detection)
-- Speech-to-text transcription (on-device)
-- Noise reduction and voice isolation
-- Export to MP3 (320kbps) or WAV
-- Full undo/redo history
-- Keyboard shortcuts and responsive design
-
-### 🎬 Video Editor (`/video`)
-Build professional videos from a timeline:
-- Multi-clip timeline with drag-to-reorder
-- Per-clip speed control (0.25×–4×)
-- Per-clip audio control (volume, fade, mute)
-- Text overlays with custom styling and 9-point positioning
-- Filters and transforms (brightness, saturation, B&W, sepia, rotate)
-- Fade-through-black transitions
-- Canvas presets (original, 16:9, 9:16, 1:1, 720p)
-- Quick tools (extract audio, make GIF, compress, convert, grab frame, mute)
-- Export to MP4 or audio as MP3/WAV
-
-### 🖼️ Image Editor (`/image`)
-Full-featured image editing, all in your browser (zero upload):
-- Crop & transform (ratio presets, rotate, flip)
-- Adjustments (brightness, contrast, saturation, warmth, blur)
-- Filter presets (B&W, sepia, vintage, cool, warm, vivid, invert)
-- Text & meme text (multiple draggable layers, outline support)
-- Drawing tools (brush, shapes, arrows, any color/size)
-- Paste from clipboard
-- Real super-resolution upscale (2×/4× via learned models)
-- Undo/redo history
-- Export as PNG, JPG, or WebP
-
-### 🤖 AI Assistant
-An interactive AI assistant available throughout the app to help with:
-- Workflow guidance and best practices
-- Feature explanations and shortcuts
-- Custom editing suggestions
-- Memory of conversation context (local only)
-
----
-
-## ⚡ Quick Start (Windows)
-
-### Prerequisites
-- **Python 3.11+** → [Download](https://www.python.org/downloads/)
-- **FFmpeg** → [Download](https://ffmpeg.org/download.html) *(optional, but recommended for video/audio features)*
-
-### Installation & Run
-
-```bash
-# Clone the repository
-git clone https://github.com/ArPaN-DS/Audio_Cutter.git
-cd Audio_Cutter
-
-# Option A: Automatic (Windows)
-# Simply double-click run.bat
-# It will set up the venv, install dependencies, and start the server
-
-# Option B: Manual
-# 1. Create and activate virtual environment
+```powershell
+git clone https://github.com/ArPaN-DS/AI_audio_video_image_editor.git
+cd AI_audio_video_image_editor
 python -m venv venv
-venv\Scripts\activate
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Configure environment
-copy .env.example .env
-# Edit .env and set your FLASK_SECRET_KEY
-
-# 4. (Optional) Download AI models for offline use
-python download_models.py
-
-# 5. Run the app
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"
+# Set FLASK_SECRET_KEY in .env to the generated value.
 python app.py
 ```
 
-### 🎉 Open → [http://localhost:5000](http://localhost:5000)
+Open [localhost:5000](http://localhost:5000). For Unix-like shells, activate with `source venv/bin/activate` and copy the template with `cp .env.example .env`.
 
-> **📖 Need more help?** See the [full setup guide](docs/SETUP.md)
+[Setup guide](docs/SETUP.md) / [User manual](docs/USER_MANUAL.md) / [Assistant guide](docs/ASSISTANT.md)
 
----
+## Optional AI packs
 
-## 📦 Optional Model Packs
-
-### Speech-to-Text & Image Super-Resolution
-These are **auto-downloaded** on first use, but you can pre-fetch them:
-
-```bash
-python download_models.py
+```powershell
+python download_models.py               # Pre-fetch supported image / transcription assets
+python download_models.py --voice       # Local studio voice pack
+python download_models.py --voice-lite  # Compact local voice pack
+python download_models.py --stems       # Optional neural separator
+python download_models.py --stems-fine  # Fine separation pack
 ```
 
-### Natural Voiceover (Text-to-Speech)
-Optional TTS pack (~350 MB) — install explicitly:
+Voiceover uses local Kokoro ONNX packs or available system speech. Copilot reasoning uses an operator-configured OpenAI-compatible **loopback** service; the built-in intent planner can work without that service. Downloading packages and weights requires network access. Offline runtime requires the relevant assets to be available locally.
 
-```bash
-python download_models.py --voice       # Full voiceover pack
-python download_models.py --voice-lite  # Compact variant
+## Configuration and privacy
+
+Copy `.env.example` to a private `.env`; never commit local credentials or endpoint details.
+
+| Key | Purpose |
+|---|---|
+| `FLASK_SECRET_KEY` | Persistent cryptographic session secret; generate a random value |
+| `FLASK_PORT`, `FLASK_DEBUG` | Local port and explicit development debugger setting |
+| `APP_PRODUCT_NAME`, `APP_ASSISTANT_NAME` | Runtime display names |
+| `MEDIA_QUALITY_TIER` | `auto`, `lite`, `balanced` or `max` quality ceiling |
+| `LOCAL_REASONING_*` | Optional loopback endpoint, served model IDs and prompt/routing controls |
+| `COPILOT_MEMORY` | Local persistent memory (`on` by default; `off` to disable) |
+| `MEDIA_ACTIVITY_LOGGING` | Upload activity metadata collection; **off by default** |
+| `DB_*` | Optional PostgreSQL target, used only when activity logging is enabled |
+
+Media is processed on the **application host**. Accessing a server on another computer uploads files to that computer. Runtime media, projects, local memory, personal skills, model caches and logs are ignored by Git. Browser chat storage, downloads, backups and optional database logs require separate deletion.
+
+The current app is designed for a **trusted single-user environment**. It has no built-in user accounts or per-user storage isolation. Background job state and resource locks are process-local. Read [deployment constraints](docs/SYSTEM_ARCHITECTURE_DETAILED.md#trust-boundaries-and-deployment-constraints) before considering shared hosting.
+
+[Storage lifecycle](docs/STORAGE.md) / [Repository privacy and history cleanup](docs/REPOSITORY_PRIVACY.md) / [Security policy](SECURITY.md)
+
+## Contributing and maintenance
+
+Useful contribution areas include processor capabilities, reusable workflows, accessibility, synthetic regression checks, model-download reproducibility and measured resource/performance improvements. The [engineering guide](docs/ENGINEERING.md#what-contributors-can-improve-next) identifies concrete next steps.
+
+```powershell
+python scripts/update_architecture.py
+python scripts/update_architecture.py --check
+python scripts/check_repository_hygiene.py --history
 ```
 
-### Studio Stems (Vocal/Instrument Separation)
-Optional neural separator (~84 MB + weights) — install explicitly:
+The inventory generator reads source without starting the application. The hygiene checker flags prohibited tracked artifacts and recognizable secret formats without displaying matched values; `--history` adds all locally reachable Git blobs. These checks do not certify that every possible secret format or remote copy is clean.
 
-```bash
-python download_models.py --stems       # Core separator
-python download_models.py --stems-fine  # Plus 4-model ensemble
-```
+Historical personal test files and media fixtures were removed. Do not use real recordings, images, transcripts or credentials in contributions. Use generated inputs in temporary directories. There is currently no maintained end-to-end regression suite; checks and limits of this review are recorded in [CODEBASE_REVIEW.md](docs/CODEBASE_REVIEW.md).
 
----
+[Contribution guide](docs/CONTRIBUTING.md) / [Code of conduct](CODE_OF_CONDUCT.md) / [Third-party notices](THIRD_PARTY_NOTICES.md)
 
-## ⚙️ Configuration
+## License
 
-Copy `.env.example` to `.env`:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `FLASK_SECRET_KEY` | *(required)* | Session secret — generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `FLASK_PORT` | `5000` | Server port |
-| `APP_PRODUCT_NAME` | `"Studio"` | Display name for the app (configured at runtime) |
-| `APP_ASSISTANT_NAME` | `"Assistant"` | Display name for the AI helper (configured at runtime) |
-| `DB_PASSWORD` | — | PostgreSQL password (optional logging backend) |
-
----
-
-## 🧪 Testing
-
-Run the test suite to verify everything works:
-
-```bash
-# Python e2e tests
-python e2e_full_automated_test.py
-
-# Individual component tests
-python test_media_dsp_correctness.py
-python test_platform_hardening.py
-python test_reasoning_models.py
-python test_identity_guard.py
-
-# Agent evaluation (if offline reasoning is enabled)
-python agent_orchestration_eval.py
-python agent_skills_eval.py
-python slm_eval.py
-
-# JavaScript tests (frontend)
-node agent_chat_robustness_test.js
-node agent_session_test.js
-node agent_skills_ui_test.js
-node image_studio_test.js
-node local_voice_input_test.js
-node studio_agent_test.js
-node studio_playback_test.js
-```
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| **Backend** | Python 3.11+, Flask 3.x |
-| **Media processing** | FFmpeg (installed separately) plus local audio, video and image processing |
-| **AI features** | Local, on-device models only (optional packs via `download_models.py`) |
-| **Frontend** | HTML5, CSS3, vanilla JavaScript |
-| **Logging** | PostgreSQL via psycopg2 (optional) |
-
----
-
-## 📁 Project Structure
-
-```
-Audio_Cutter/
-├── app.py                      # Flask backend — routes & request handling
-├── ai_processor.py             # Local AI processing (silence, beats, denoise, transcription)
-├── model_manager.py            # AI model lifecycle & resource governance
-├── agent_*.py                  # AI assistant modules (orchestration, memory, planner)
-├── slm_*.py                    # Local reasoning model (if enabled)
-├── {audio,video,image}_processor.py  # Specialized editors
-├── requirements.txt            # Python dependencies
-├── .env.example                # Environment template
-├── download_models.py          # Optional model pack installer
-├── THIRD_PARTY_NOTICES.md      # Third-party licenses
-│
-├── static/
-│   ├── style.css, *.css        # Design system (glassmorphism)
-│   ├── script.js, *.js         # Frontend logic
-│   ├── vendor/                 # Vendored libraries (Font Awesome, JSZip, wavesurfer)
-│   └── brand-mark.svg          # App logo
-│
-├── templates/
-│   ├── index.html              # Landing/dashboard
-│   ├── audio.html, video.html, image.html  # Editor templates
-│   └── studio.html             # Unified editor interface
-│
-├── docs/
-│   ├── SETUP.md                # Detailed setup guide
-│   ├── STORAGE.md              # Data storage & privacy policy
-│   └── ASSISTANT.md              # AI assistant guide (if applicable)
-│
-├── perf/
-│   └── bench.py, memprobe.py   # Performance benchmarking
-│
-├── uploads/, processed/, logs/ # Runtime data (auto-managed)
-└── models/                     # Downloaded AI models (local cache)
-```
-
----
-
-## 🔧 Environment & Dependencies
-
-### Minimal Install
-```bash
-pip install -r requirements.txt
-```
-
-All core features work without optional packages. Advanced features gracefully degrade to fallbacks:
-- No neural voice-cleanup pack? → Uses spectral noise reduction
-- No stems pack? → Uses fast signal-processing separation
-- No FFmpeg? → Audio editor still works; video features are limited
-- No voice pack? → Voiceover uses the operating system's built-in voices
-
-### Advanced Options
-For offline reasoning, transcription, or stem separation, see [SETUP.md](docs/SETUP.md).
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-Third-party licenses are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Whether it's a bug fix, feature, or documentation improvement:
-
-1. Fork the repo
-2. Create your branch: `git checkout -b feat/your-feature`
-3. Commit your changes: `git commit -m "feat: add awesome feature"`
-4. Push & open a Pull Request
-
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for full guidelines.
-
----
-
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/ArPaN-DS"><strong>ArPaN-DS</strong></a>
-  <br><br>
-  If this project helped you, please consider giving it a ⭐
-</p>
+The project source is licensed under [MIT](LICENSE). Dependencies, model weights and voice assets have their own terms; review [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the applicable upstream licenses before enabling or distributing optional packs.

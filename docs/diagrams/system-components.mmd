@@ -1,0 +1,44 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","primaryColor":"#f0fdfa","primaryTextColor":"#134e4a","primaryBorderColor":"#0f766e","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"wrappingWidth":240,"nodeSpacing":40,"rankSpacing":55,"curve":"basis"}}}%%
+flowchart TB
+    subgraph browser["01 / Browser"]
+        editors["Media editors<br/>Audio / video / image / studio"]
+        chat["Copilot interface<br/>JSON chat + background job polling"]
+        local["Local editing state<br/>Canvas / playback / undo / export"]
+        editors <--> local
+    end
+    subgraph server["02 / Single Python application process"]
+        gateway["Application gateway<br/>Configuration / projects / files"]
+        routes["Four Flask blueprints<br/>audio · video · image · assistant"]
+        planning["Copilot planning<br/>Intent to validated dependency graph"]
+        context["Skills and memory<br/>Workflows / retrieval / preferences"]
+        reasoning["Local reasoning client<br/>Prompt budgets / schemas / fallback"]
+        executor["Specialist execution<br/>Audio / Video / Vision / Inspector"]
+        processors["Media processors<br/>FFmpeg / DSP · Pillow / OpenCV · optional neural packs"]
+        resources["Resource governance<br/>Admission / budgets / model lifecycle"]
+        jobs["Background jobs<br/>Threads / polling state / cancel flag"]
+    end
+    storage[("03 / Private local storage<br/>Media / projects / memory<br/>Skills / model cache")]
+    service["Optional model service<br/>Loopback HTTP only"]
+    editors <-->|"HTTP / JSON / files"| gateway
+    chat <-->|"POST chat · submit / poll / cancel"| gateway
+    gateway --> routes
+    routes -->|"Direct editor operations"| processors
+    routes --> planning
+    planning <--> context
+    planning <--> reasoning
+    reasoning <-->|"Models / completions"| service
+    context -.->|"Optional embeddings"| service
+    planning --> executor
+    routes --> jobs
+    jobs --> executor
+    executor --> processors
+    resources -.->|"Resource governance"| processors
+    processors <--> storage
+    context <--> storage
+    gateway <-->|"Project saves / media serving"| storage
+    classDef client fill:#eff6ff,stroke:#2563eb,color:#172554
+    classDef app fill:#f0fdfa,stroke:#0f766e,color:#134e4a
+    classDef data fill:#fff7ed,stroke:#c2410c,color:#7c2d12
+    class editors,chat,local client
+    class gateway,routes,planning,context,reasoning,executor,processors,resources,jobs app
+    class storage,service data

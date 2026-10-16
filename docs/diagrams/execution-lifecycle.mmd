@@ -1,0 +1,26 @@
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, sans-serif","fontSize":"16px","primaryColor":"#f0fdfa","primaryTextColor":"#134e4a","primaryBorderColor":"#0f766e","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"wrappingWidth":240,"nodeSpacing":40,"rankSpacing":55,"curve":"basis"}}}%%
+flowchart TD
+    plan["Validated tool plan"] --> steps["execution_steps<br/>IDs · input dependencies · branches"]
+    steps --> next{"Next step has<br/>successful input?"}
+    next -->|No| blocked["Mark dependent step blocked<br/>Continue independent branches"]
+    next -->|Yes| validate["Inspect actual input<br/>Strict argument and media validation"]
+    validate --> dispatch["Dispatch Audio / Video / Vision / Inspector"]
+    dispatch --> admission["Processor admission<br/>CPU / encode / GPU / model slots + RAM budget"]
+    admission --> model["Optional managed model session<br/>Adaptive variant selection / demotion"]
+    model --> process["Run operation<br/>Fuse consecutive video soundtrack edits when applicable"]
+    process --> check{"Output verified?"}
+    check -->|Yes| output["Record success, timing and artifact<br/>Update main output or branch output"]
+    check -->|No / exception| retry{"Retry or planned<br/>fallback available?"}
+    retry -->|Yes| dispatch
+    retry -->|No| failure["Record error<br/>Block only dependent steps"]
+    output --> more{"More steps?"}
+    blocked --> more
+    failure --> more
+    more -->|Yes| next
+    more -->|No| result["Main output + side artifacts<br/>Success / partial / failed result"]
+    classDef process fill:#f0fdfa,stroke:#0f766e,color:#134e4a
+    classDef decision fill:#eff6ff,stroke:#2563eb,color:#172554
+    classDef artifact fill:#fff7ed,stroke:#c2410c,color:#7c2d12
+    class plan,steps,validate,dispatch,admission,model,process process
+    class next,check,retry,more decision
+    class blocked,failure,output,result artifact
