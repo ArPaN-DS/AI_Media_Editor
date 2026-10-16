@@ -7,8 +7,8 @@ Contributions should make the local media workspace more useful, inspectable and
 Fork the repository through GitHub, then clone your fork and create a branch:
 
 ```powershell
-git clone https://github.com/YOUR_USERNAME/AI_audio_video_image_editor.git
-cd AI_audio_video_image_editor
+git clone https://github.com/YOUR_USERNAME/AI_Media_Editor.git
+cd AI_Media_Editor
 git switch -c feature/describe-the-change
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -44,4 +44,4 @@ For performance changes, follow the [measurement requirements](PERFORMANCE.md). 
 
 Use the PR template, explain why the change is needed and describe the final behavior for a reviewer who has not seen prior conversation. Include meaningful validation and material limits. Inspect the staged diff before pushing; CI cannot retract private data already uploaded to the hosting provider.
 
-Review the [code of conduct](../CODE_OF_CONDUCT.md), [third-party notices](../THIRD_PARTY_NOTICES.md) and [security policy](../SECURITY.md). Report vulnerabilities privately through the repository's security-advisory channel instead of public issues. Feature requests and ordinary bugs can use [GitHub Issues](https://github.com/ArPaN-DS/AI_audio_video_image_editor/issues).
+Review the [code of conduct](../CODE_OF_CONDUCT.md), [third-party notices](../THIRD_PARTY_NOTICES.md) and [security policy](../SECURITY.md). Report vulnerabilities privately through the repository's security-advisory channel instead of public issues. Feature requests and ordinary bugs can use [GitHub Issues](https://github.com/ArPaN-DS/AI_Media_Editor/issues).

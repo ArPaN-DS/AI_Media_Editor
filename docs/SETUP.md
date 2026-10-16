@@ -81,8 +81,8 @@ sudo apt install ffmpeg
 Open a terminal (Command Prompt, PowerShell, or Terminal) and run:
 
 ```bash
-git clone https://github.com/ArPaN-DS/AI_audio_video_image_editor.git
-cd AI_audio_video_image_editor
+git clone https://github.com/ArPaN-DS/AI_Media_Editor.git
+cd AI_Media_Editor
 ```
 
 ---

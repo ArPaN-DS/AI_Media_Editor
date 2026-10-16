@@ -59,8 +59,8 @@ Advanced features depend on installed packages, model weights and FFmpeg. Direct
 Install **Python 3.11+** and **FFmpeg** for audio/video processing. On Windows, `run.bat` provides an automatic setup path. For manual setup in PowerShell:
 
 ```powershell
-git clone https://github.com/ArPaN-DS/AI_audio_video_image_editor.git
-cd AI_audio_video_image_editor
+git clone https://github.com/ArPaN-DS/AI_Media_Editor.git
+cd AI_Media_Editor
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt

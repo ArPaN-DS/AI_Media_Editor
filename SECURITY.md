@@ -12,7 +12,7 @@
 
 If you discover a security vulnerability in Audio Cutter Pro, please report it responsibly:
 
-1. **Open a [GitHub Security Advisory](https://github.com/ArPaN-DS/AI_audio_video_image_editor/security/advisories/new)** (preferred — keeps it private until patched)
+1. **Open a [GitHub Security Advisory](https://github.com/ArPaN-DS/AI_Media_Editor/security/advisories/new)** (preferred — keeps it private until patched)
 2. Or contact the maintainer directly via the email listed on the [GitHub profile](https://github.com/ArPaN-DS)
 
 ### What to Include
