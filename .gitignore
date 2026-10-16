@@ -16,20 +16,82 @@ env/
 audio_cutter/
 .env
 
-# ─── Uploads & Processed files ───
-uploads/*
+# ─── Uploads & Processed files (NEVER commit user media) ───
+uploads/
 !uploads/.gitkeep
-processed/*
+processed/
 !processed/.gitkeep
-logs/*
+logs/
 !logs/.gitkeep
 
-# ─── Downloaded Models (Whisper, Super-Res) ───
-models/*
+# ─── Downloaded Models (Whisper, Super-Res, TTS, Demucs) ───
+models/
 !models/.gitkeep
 
-# ─── Performance benchmarking (never commit) ───
-perf/__pycache__/
+# ─── Projects (personal studio saves) ───
+projects/
+!projects/.gitkeep
+
+# ─── Copilot Memory & user data ───
+data/
+memory/
+user_skills/
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+
+# ─── Audio / Video / Image — personal media files ───
+*.wav
+*.mp3
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.flac
+*.ogg
+*.m4a
+*.aac
+*.wma
+*.opus
+*.aiff
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.tif
+*.heic
+*.raw
+*.psd
+*.svg
+# Keep the brand-mark SVG that is part of the product UI
+!static/brand-mark.svg
+# Keep logo
+!static/logo.png
+
+# ─── Test files — never commit personal test data ───
+test_*.py
+*_test.py
+*_test.js
+e2e_*.py
+*_eval.py
+slm_eval.py
+perf/
+static/samples/
+dummy.wav
+test_audio.wav
+test_media_scratch/
+*.pytest_cache/
+.coverage
+htmlcov/
+
+# ─── Performance & benchmark artifacts ───
+perf/
 
 # ─── IDE ───
 .vscode/
@@ -44,30 +106,9 @@ perf/__pycache__/
 Thumbs.db
 desktop.ini
 
-# ─── Internal / non-public dirs ───
+# ─── Internal profile dirs ───
 github_profile/
 github_profile_repo/
 
-# ─── Misc ───
+# ─── Misc logs ───
 *.log
-
-
-# ─── Runtime user data (never commit) ───
-projects/*
-!projects/.gitkeep
-test_media_scratch/
-data/
-memory/
-*.sqlite
-*.sqlite3
-*.db
-*.db-wal
-*.db-shm
-
-# ─── Test & tool artifacts ───
-.pytest_cache/
-.coverage
-htmlcov/
-
-# ─── Copilot personal skills (user-created) ───
-user_skills/
