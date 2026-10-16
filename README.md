@@ -10,13 +10,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ArPaN-DS/Audio_Cutter/stargazers"><img src="https://img.shields.io/github/stars/ArPaN-DS/Audio_Cutter?style=for-the-badge&logo=github&color=FFD700&labelColor=1a1a2e" alt="GitHub Stars"></a>
-  <a href="https://github.com/ArPaN-DS/Audio_Cutter/network/members"><img src="https://img.shields.io/github/forks/ArPaN-DS/Audio_Cutter?style=for-the-badge&logo=github&color=4CAF50&labelColor=1a1a2e" alt="GitHub Forks"></a>
-  <a href="https://github.com/ArPaN-DS/Audio_Cutter/issues"><img src="https://img.shields.io/github/issues/ArPaN-DS/Audio_Cutter?style=for-the-badge&color=FF6B6B&labelColor=1a1a2e" alt="Open Issues"></a>
-  <a href="https://github.com/ArPaN-DS/Audio_Cutter/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ArPaN-DS/Audio_Cutter?style=for-the-badge&color=blue&labelColor=1a1a2e" alt="MIT License"></a>
+  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/stargazers"><img src="https://img.shields.io/github/stars/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&logo=github&color=FFD700&labelColor=1a1a2e" alt="GitHub Stars"></a>
+  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/network/members"><img src="https://img.shields.io/github/forks/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&logo=github&color=4CAF50&labelColor=1a1a2e" alt="GitHub Forks"></a>
+  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/issues"><img src="https://img.shields.io/github/issues/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&color=FF6B6B&labelColor=1a1a2e" alt="Open Issues"></a>
+  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&color=blue&labelColor=1a1a2e" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white&labelColor=1a1a2e" alt="Python 3.11+">
-  <a href="https://github.com/ArPaN-DS/Audio_Cutter/actions"><img src="https://img.shields.io/github/actions/workflow/status/ArPaN-DS/Audio_Cutter/ci.yml?style=for-the-badge&label=CI&labelColor=1a1a2e" alt="CI Status"></a>
-  <a href="https://github.com/ArPaN-DS/Audio_Cutter/commits/main"><img src="https://img.shields.io/github/last-commit/ArPaN-DS/Audio_Cutter?style=for-the-badge&labelColor=1a1a2e" alt="Last Commit"></a>
+  <a href="https://github.com/ArPaN-DS/AI_audio_video_image_editor/commits/main"><img src="https://img.shields.io/github/last-commit/ArPaN-DS/AI_audio_video_image_editor?style=for-the-badge&labelColor=1a1a2e" alt="Last Commit"></a>
 </p>
 
 ---
@@ -29,6 +28,74 @@
 | 🔒 Privacy-First | 🤖 AI-Assisted | ⚡ Feature-Rich | 🌐 Browser-Based |
 |:---:|:---:|:---:|:---:|
 | All files stay on your server — never sent to cloud APIs | Built-in AI assistant for workflow help; local models for transcription, denoising, stem separation | Four dedicated editors (audio/video/image) + quick tools + manual controls | Works on any device with a browser — no app install |
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+flowchart TB
+    subgraph ClientTier ["Client Presentation Layer (Browser)"]
+        UI_Audio["Audio Studio\n(WaveSurfer.js + Multi-track Canvas)"]
+        UI_Video["Video Editor\n(Multi-clip Timeline + WebGL Canvas)"]
+        UI_Image["Image Studio\n(Canvas Filter Engine + Transform Tools)"]
+        UI_Agent["AI Copilot Interface\n(SSE Streaming + Natural Language Chat)"]
+    end
+
+    subgraph GatewayTier ["Application Gateway Layer (Flask 3.x)"]
+        AppCore["Application Core (app.py)\nSecurity Guard, CORS, Session Context"]
+        Blueprints["Route Blueprints\n(/audio, /video, /image, /assistant)"]
+    end
+
+    subgraph IntelligenceTier ["Autonomous AI Copilot Engine"]
+        Orchestrator["Agent Orchestrator\n(Intent Routing & Session Lifecycle)"]
+        NLU["Natural Language Unit (NLU)\n(Deterministic Slot & Intent Parser)"]
+        Planner["Deterministic & Neural Planner\n(43-Tool Capability DAG Generator)"]
+        Memory["Episodic & Vector Memory\n(SQLite FTS5 + Semantic Context)"]
+        SLMClient["Local SLM / LLM Gateway\n(Loopback OpenAI-compatible Engine)"]
+    end
+
+    subgraph ExecutionTier ["Media Processing & Synthesis Pipelines"]
+        DSP_Audio["Audio DSP (FFmpeg + Librosa)"]
+        DSP_Video["Video Composition (FFmpeg Filter Graph)"]
+        DSP_Image["Image Transforms (Pillow + OpenCV)"]
+        NN_Sep["Stem Separation (Demucs v4)"]
+        NN_SR["Super-Resolution (Real-ESRGAN)"]
+        NN_Deblur["NAFNet Deblurring & Restoration"]
+        NN_TTS["Speech Synthesis (Whisper + Edge-TTS)"]
+    end
+
+    subgraph ResourceTier ["Resource Governance & Storage"]
+        Governor["Adaptive Quality Governor (Lite / Balanced / Max)"]
+        ModelManager["Model Lifecycle Manager (VRAM / RAM Caching)"]
+        Storage[("Local Filesystem Storage\n(/uploads, /processed, /projects, /models)")]
+    end
+
+    %% Wiring
+    ClientTier --> GatewayTier
+    GatewayTier --> IntelligenceTier
+    GatewayTier --> ExecutionTier
+    IntelligenceTier --> ExecutionTier
+    IntelligenceTier <--> Memory
+    ResourceTier -.-> ExecutionTier
+    ExecutionTier --> Storage
+
+    classDef clientStyle fill:#1e293b,stroke:#38bdf8,stroke-width:1px,color:#f8fafc;
+    classDef gatewayStyle fill:#0f172a,stroke:#6366f1,stroke-width:1px,color:#f8fafc;
+    classDef intelligenceStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:1px,color:#f8fafc;
+    classDef engineStyle fill:#14291f,stroke:#10b981,stroke-width:1px,color:#f8fafc;
+    classDef resourceStyle fill:#2a1b18,stroke:#f59e0b,stroke-width:1px,color:#f8fafc;
+
+    class UI_Audio,UI_Video,UI_Image,UI_Agent clientStyle;
+    class AppCore,Blueprints gatewayStyle;
+    class Orchestrator,NLU,Planner,Memory,SLMClient intelligenceStyle;
+    class DSP_Audio,DSP_Video,DSP_Image,NN_Sep,NN_SR,NN_Deblur,NN_TTS engineStyle;
+    class Governor,ModelManager,Storage resourceStyle;
+```
+
+> 📖 **Architecture Documentation**:
+> - [High-Level Architecture Overview](docs/SYSTEM_ARCHITECTURE_OVERVIEW.md) — Architectural principles, data flows, and subsystem interactions.
+> - [Detailed End-to-End Component Architecture](docs/SYSTEM_ARCHITECTURE_DETAILED.md) — Comprehensive low-level reference covering all 32 Python modules, 43-tool DAG planner, memory schemas, and neural model pipelines.
 
 ---
 
